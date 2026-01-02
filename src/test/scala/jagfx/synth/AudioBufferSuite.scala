@@ -26,9 +26,9 @@ class AudioBufferSuite extends munit.FunSuite:
     assertEquals(mixed.samples(1), 210)
     assertEquals(mixed.samples(2), 320)
 
-  test("toBytes converts to 8-bit signed"):
+  test("toBytesUnsigned converts to 8-bit unsigned"):
     val buf = AudioBuffer(Array(0, 256, -256), 22050)
-    val bytes = buf.toBytes
-    assertEquals(bytes(0).toInt, 0)
-    assertEquals(bytes(1).toInt, 1)
-    assertEquals(bytes(2).toInt, -1)
+    val bytes = buf.toBytesUnsigned
+    assertEquals(bytes(0) & 0xff, 128) // 0 -> 128 (silence)
+    assertEquals(bytes(1) & 0xff, 129) // +256 -> 129
+    assertEquals(bytes(2) & 0xff, 127) // -256 -> 127
