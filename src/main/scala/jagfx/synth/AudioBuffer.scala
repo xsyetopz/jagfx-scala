@@ -1,5 +1,8 @@
 package jagfx.synth
 
+import jagfx.Constants
+import jagfx.Constants.SampleRate
+
 /** Container for synthesized audio samples with mixing and conversion
   * operations.
   *
@@ -8,7 +11,7 @@ package jagfx.synth
   * @param sampleRate
   *   Samples per second (default `22050` Hz)
   */
-class AudioBuffer(val samples: Array[Int], val sampleRate: Int = 22050):
+class AudioBuffer(val samples: Array[Int], val sampleRate: Int = SampleRate):
   /** Returns number of samples in buffer. */
   def length: Int = samples.length
 
@@ -24,9 +27,10 @@ class AudioBuffer(val samples: Array[Int], val sampleRate: Int = 22050):
 
   /** Clips samples to 16-bit signed range (`-32768` to `32767`). */
   def clip(): AudioBuffer =
+    import Constants._
     val clipped = samples.map { s =>
-      if s < -32768 then -32768
-      else if s > 32767 then 32767
+      if s < Int16.Min then Int16.Min
+      else if s > Int16.Max then Int16.Max
       else s
     }
     AudioBuffer(clipped, sampleRate)
@@ -38,9 +42,9 @@ class AudioBuffer(val samples: Array[Int], val sampleRate: Int = 22050):
 /** AudioBuffer factory methods. */
 object AudioBuffer:
   /** Creates zero-filled buffer with specified sample count. */
-  def empty(sampleCount: Int, sampleRate: Int = 22050): AudioBuffer =
+  def empty(sampleCount: Int, sampleRate: Int = SampleRate): AudioBuffer =
     AudioBuffer(new Array[Int](sampleCount), sampleRate)
 
   /** Creates silence-filled buffer (8-bit midpoint). */
   def silence(sampleCount: Int): AudioBuffer =
-    AudioBuffer(Array.fill(sampleCount)(-128), 22050)
+    AudioBuffer(Array.fill(sampleCount)(-128), SampleRate)
