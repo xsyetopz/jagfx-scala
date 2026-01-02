@@ -2,6 +2,7 @@ package jagfx.ui.viewmodel
 
 import javafx.beans.property._
 import jagfx.model._
+import jagfx.Constants
 
 /** `ViewModel` for single `Tone`. */
 class ToneViewModel:
@@ -28,7 +29,7 @@ class ToneViewModel:
   val reverbVolume = new SimpleIntegerProperty(0)
 
   // Harmonics (10 slots)
-  val harmonics = Array.fill(10)(new HarmonicViewModel())
+  val harmonics = Array.fill(Constants.MaxHarmonics)(new HarmonicViewModel())
 
   def load(toneOpt: Option[Tone]): Unit =
     toneOpt match
@@ -36,6 +37,13 @@ class ToneViewModel:
         enabled.set(true)
         pitch.load(t.pitchEnvelope)
         volume.load(t.volumeEnvelope)
+
+        vibratoRate.clear()
+        vibratoDepth.clear()
+        tremoloRate.clear()
+        tremoloDepth.clear()
+        gateSilence.clear()
+        gateDuration.clear()
 
         t.vibratoRate.foreach(vibratoRate.load)
         t.vibratoDepth.foreach(vibratoDepth.load)
