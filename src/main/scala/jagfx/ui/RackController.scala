@@ -93,37 +93,29 @@ class RackController(viewModel: SynthViewModel, inspector: InspectorController):
   private def selectCell(idx: Int): Unit =
     viewModel.selectedCellIndex.set(idx)
 
-  private def bindInspector(idx: Int): Unit =
-    val tone = viewModel.getActiveTone
-    val env: Option[EnvelopeViewModel] = idx match
+  /** Returns envelope for cell index, or `None` for disabled cells. */
+  private def envelopeForCell(
+      tone: ToneViewModel,
+      idx: Int
+  ): Option[EnvelopeViewModel] =
+    idx match
       case 0  => Some(tone.pitch)
       case 1  => Some(tone.vibratoRate)
       case 2  => Some(tone.vibratoDepth)
-      case 3  => None // Filt Pole
       case 4  => Some(tone.volume)
       case 5  => Some(tone.tremoloRate)
       case 6  => Some(tone.tremoloDepth)
-      case 7  => None // Transition
       case 9  => Some(tone.gateSilence)
       case 10 => Some(tone.gateDuration)
       case _  => None
 
-    env.foreach(inspector.bind)
+  private def bindInspector(idx: Int): Unit =
+    envelopeForCell(viewModel.getActiveTone, idx).foreach(inspector.bind)
 
   private def bindActiveTone(): Unit =
     val tone = viewModel.getActiveTone
-    cells(0).setViewModel(tone.pitch)
-    cells(1).setViewModel(tone.vibratoRate)
-    cells(2).setViewModel(tone.vibratoDepth)
-    // 3 Disabled
-    cells(4).setViewModel(tone.volume)
-    cells(5).setViewModel(tone.tremoloRate)
-    cells(6).setViewModel(tone.tremoloDepth)
-    // 7 Disabled
-    // 8 Output - No Env
-    cells(9).setViewModel(tone.gateSilence)
-    cells(10).setViewModel(tone.gateDuration)
-    // 11 Disabled
+    for idx <- cells.indices if cells(idx) != null do
+      envelopeForCell(tone, idx).foreach(cells(idx).setViewModel)
 
   private var preSoloMuteState: Map[JagCellPane, Boolean] = Map.empty
 
