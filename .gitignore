@@ -1,6 +1,3 @@
-references/*.html
-*.sh
-
 .agent/*
 
 .cursorignore
