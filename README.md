@@ -40,11 +40,11 @@ Jagex Audio Synthesis Engine & Tools.
 
 ```text
 src/main/scala/jagfx/
-├── cli/                # CLI entry point logic
 ├── io/                 # Binary serialization & WAV generation
 ├── model/              # Pure data models (Tone, Envelope, etc.)
 ├── synth/              # DSP & Waveform generation logic
 └── Constants.scala     # Shared constants
+└── JagFXCli.scala      # Main CLI entry point
 ```
 
 ## Implementation Layers
