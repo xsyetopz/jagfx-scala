@@ -2,7 +2,7 @@ package jagfx
 
 import jagfx.io._
 import jagfx.synth._
-import java.nio.file.{Files, Paths}
+import java.nio.file._
 
 /** Command-line interface for `.synth` to `.wav` conversion. */
 object JagFXCli:
@@ -11,6 +11,11 @@ object JagFXCli:
     val cleanArgs =
       if args.nonEmpty && args(0) == "--" then args.drop(1)
       else args
+
+    if cleanArgs.contains("--help") || cleanArgs.contains("-h") then
+      println("Usage: jagfx-cli <input.synth> <output.wav> [loopCount]")
+      System.exit(0)
+
     if cleanArgs.length < 2 then
       scribe.error("Usage: jagfx-cli <input.synth> <output.wav> [loopCount]")
       System.exit(1)
