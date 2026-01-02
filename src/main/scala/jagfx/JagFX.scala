@@ -6,7 +6,7 @@ import javafx.scene.layout.BorderPane
 import javafx.stage.Stage
 import jagfx.ui.MainController
 
-val (minWidth, minHeight) = (640, 480)
+val (minWidth, minHeight) = (800, 520)
 
 /** GUI application entry point. */
 class JagFX extends Application:
@@ -21,6 +21,7 @@ class JagFX extends Application:
     stage.setScene(scene)
     stage.setMinWidth(minWidth)
     stage.setMinHeight(minHeight)
+    stage.setResizable(false)
     stage.show()
 
     scribe.info("JagFX started")
