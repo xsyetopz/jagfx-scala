@@ -56,11 +56,11 @@ class BinaryBufferSuite extends munit.FunSuite:
     assertEquals(buf.readSmartUnsigned(), 127)
     assertEquals(buf.readSmartUnsigned(), 128)
 
-  test("readSmartSigned reads signed smart value"):
+  test("readSmart reads signed smart value"):
     val buf = BinaryBuffer(Array[Byte](0x40, 0x00, 0x7f))
-    assertEquals(buf.readSmartSigned(), 0)
-    assertEquals(buf.readSmartSigned(), -64)
-    assertEquals(buf.readSmartSigned(), 63)
+    assertEquals(buf.readSmart(), 0)
+    assertEquals(buf.readSmart(), -64)
+    assertEquals(buf.readSmart(), 63)
 
   test("writeU8 writes unsigned byte"):
     val buf = BinaryBuffer(4)
