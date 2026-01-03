@@ -21,28 +21,33 @@ class EnvelopeEvaluator(envelope: Envelope):
     threshold = 0
     position = 0
     delta = 0
-    amplitude = 0
+    amplitude = envelope.start << 15
     ticks = 0
 
   /** Evaluates envelope at current tick, advancing internal state. Returns
     * interpolated value scaled to `0`-`65535` range.
     */
-  def evaluate(deltaArg: Int): Int =
+  def evaluate(period: Int): Int =
     if envelope.segments.isEmpty then return envelope.start
 
     if ticks >= threshold then
       amplitude = envelope.segments(position).peak << 15
       position += 1
+
       if position >= envelope.segments.length then
         position = envelope.segments.length - 1
+
       threshold = ((envelope
         .segments(position)
         .duration
-        .toDouble / 65536.0) * deltaArg).toInt
+        .toDouble / 65536.0) * period).toInt
+
       if threshold > ticks then
         delta = ((envelope
           .segments(position)
           .peak << 15) - amplitude) / (threshold - ticks)
+      else delta = 0
+
     amplitude += delta
     ticks += 1
     (amplitude - delta) >> 15
