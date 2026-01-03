@@ -2,133 +2,178 @@ package jagfx.synth
 
 import jagfx.model._
 import jagfx.Constants
+import jagfx.Constants.Int16
 import jagfx.utils.MathUtils._
 
-object FilterSynthesizer:
-  def apply(buffer: Array[Int], filter: Filter, sampleCount: Int): Unit =
-    val envelopeEval = filter.envelope.map(EnvelopeEvaluator(_))
-    envelopeEval.foreach(_.reset())
+private val FilterUpdateRate = 128
 
-    val feedforwardCoefs = Array.ofDim[Int](8)
-    val feedbackCoefs = Array.ofDim[Int](8)
-    val floatCoefs = Array.ofDim[Float](2, 8)
-    // clone input to separate X (feedforward) from Y (feedback)
+/** IIR filter processor. */
+object FilterSynthesizer:
+  /** Applies IIR filter to buffer in-place. */
+  def apply(buffer: Array[Int], filter: Filter, sampleCount: Int): Unit =
+    val envelopeEval = filter.envelope.map(EnvelopeEvaluator(_)).orNull
+    if envelopeEval != null then envelopeEval.reset()
+
+    val state = FilterState(filter)
     val input = buffer.clone()
 
-    val FilterUpdateRate = 128
-    var output = 0L
-
     var t =
-      if envelopeEval.isDefined then envelopeEval.get.evaluate(sampleCount)
-      else 65536
-    var envelopeFactor = t / 65536.0f
+      if envelopeEval != null then envelopeEval.evaluate(sampleCount)
+      else Int16.Range
+    var envelopeFactor = t / Int16.Range.toFloat
+    var (count0, count1, inverseA0) = state.update(envelopeFactor)
 
-    def updateCoefficients(): (Int, Int, Int) =
+    var i = 0
+    while i < sampleCount do
+      val chunkEnd = computeChunkEnd(i, sampleCount, count0)
+
+      while i < chunkEnd do
+        buffer(i) = processSample(
+          input,
+          buffer,
+          i,
+          count0,
+          count1,
+          inverseA0,
+          sampleCount,
+          state
+        )
+
+        if envelopeEval != null then
+          t = envelopeEval.evaluate(sampleCount)
+          envelopeFactor = t / Int16.Range.toFloat
+
+        i += 1
+
+      if i < sampleCount then
+        val res = state.update(envelopeFactor)
+        count0 = res._1
+        count1 = res._2
+        inverseA0 = res._3
+
+  private def computeChunkEnd(i: Int, sampleCount: Int, count0: Int): Int =
+    val nextChunk = math.min(i + FilterUpdateRate, sampleCount)
+    if nextChunk < sampleCount - count0 then nextChunk else sampleCount
+
+  private def processSample(
+      input: Array[Int],
+      buffer: Array[Int],
+      i: Int,
+      count0: Int,
+      count1: Int,
+      inverseA0: Int,
+      sampleCount: Int,
+      state: FilterState
+  ): Int =
+    val inputIdx = i + count0
+    val x_curr = if inputIdx < sampleCount then input(inputIdx).toLong else 0L
+    var output = (x_curr * inverseA0) >> 16
+
+    var k = 0
+    while k < count0 do
+      val ffIdx = i + count0 - k - 1
+      if ffIdx < sampleCount then
+        output += (input(ffIdx).toLong * state.feedforward(k)) >> 16
+      k += 1
+
+    k = 0
+    while k < count1 do
+      val fbIdx = i - k - 1
+      if fbIdx >= 0 then
+        output -= (buffer(fbIdx).toLong * state.feedback(k)) >> 16
+      k += 1
+
+    output.toInt
+
+  private class FilterState(filter: Filter):
+    val feedforward: Array[Int] = Array.ofDim[Int](8)
+    val feedback: Array[Int] = Array.ofDim[Int](8)
+    private val floatCoefs = Array.ofDim[Float](2, 8)
+
+    def update(envelopeFactor: Float): (Int, Int, Int) =
+      val inverseA0 = computeInverseA0(envelopeFactor)
+      val floatInvA0 = inverseA0 / Int16.Range.toFloat
+      val c0 = computeCoefs(0, envelopeFactor, floatInvA0)
+      val c1 = computeCoefs(1, envelopeFactor, 1.0f)
+      (c0, c1, inverseA0)
+
+    private def computeInverseA0(envelopeFactor: Float): Int =
       val unityGain0 = filter.unity(0)
       val unityGain1 = filter.unity(1)
       val interpolatedGain =
         unityGain0.toFloat + (unityGain1 - unityGain0) * envelopeFactor
       val gainDb = interpolatedGain * 0.0030517578f
       val floatInvA0 = Math.pow(0.1, gainDb / 20.0).toFloat
-      val inverseA0 = (floatInvA0 * 65536.0f).toInt
+      (floatInvA0 * Int16.Range).toInt
 
-      val c0 = compute(
-        filter,
-        0,
-        envelopeFactor,
-        floatCoefs,
-        feedforwardCoefs,
-        floatInvA0
-      )
-      val c1 =
-        compute(filter, 1, envelopeFactor, floatCoefs, feedbackCoefs, 1.0f)
-      (c0, c1, inverseA0)
+    private def computeCoefs(
+        dir: Int,
+        envelopeFactor: Float,
+        floatInvA0: Float
+    ): Int =
+      val pairCount = filter.pairCounts(dir)
+      if pairCount == 0 then return 0
 
-    var (count0, count1, inverseA0) = updateCoefficients()
+      initFirstPair(dir, envelopeFactor)
+      cascadeRemainingPairs(dir, pairCount, envelopeFactor)
+      applyGainAndConvert(dir, pairCount, floatInvA0)
 
-    var i = 0
-    while i < sampleCount do
-      val nextChunk = math.min(i + FilterUpdateRate, sampleCount)
-      val chunkEnd =
-        if nextChunk < sampleCount - count0 then nextChunk else sampleCount
+    private def initFirstPair(dir: Int, envelopeFactor: Float): Unit =
+      val amp = getAmplitude(filter, dir, 0, envelopeFactor)
+      val phase = calculatePhase(filter, dir, 0, envelopeFactor)
+      val cosPhase = Math.cos(phase).toFloat
+      floatCoefs(dir)(0) = -2.0f * amp * cosPhase
+      floatCoefs(dir)(1) = amp * amp
 
-      while i < chunkEnd do
-        val inputIdx = i + count0
-        val x_curr =
-          if inputIdx < sampleCount then input(inputIdx).toLong else 0L
-        output = (x_curr * inverseA0) >> 16
+    private def cascadeRemainingPairs(
+        dir: Int,
+        pairCount: Int,
+        envelopeFactor: Float
+    ): Unit =
+      var p = 1
+      while p < pairCount do
+        val ampP = getAmplitude(filter, dir, p, envelopeFactor)
+        val phaseP = calculatePhase(filter, dir, p, envelopeFactor)
+        val cosPhaseP = Math.cos(phaseP).toFloat
+        val term1 = -2.0f * ampP * cosPhaseP
+        val term2 = ampP * ampP
 
+        floatCoefs(dir)(p * 2 + 1) = floatCoefs(dir)(p * 2 - 1) * term2
+        floatCoefs(dir)(p * 2) = floatCoefs(dir)(
+          p * 2 - 1
+        ) * term1 + floatCoefs(dir)(p * 2 - 2) * term2
+
+        var k = p * 2 - 1
+        while k >= 2 do
+          floatCoefs(dir)(k) += floatCoefs(dir)(k - 1) * term1 + floatCoefs(
+            dir
+          )(k - 2) * term2
+          k -= 1
+
+        floatCoefs(dir)(1) += floatCoefs(dir)(0) * term1 + term2
+        floatCoefs(dir)(0) += term1
+        p += 1
+
+    private def applyGainAndConvert(
+        dir: Int,
+        pairCount: Int,
+        floatInvA0: Float
+    ): Int =
+      val iCoef = if dir == 0 then feedforward else feedback
+      val coefCount = pairCount * 2
+
+      if dir == 0 then
         var k = 0
-        while k < count0 do
-          val ffIdx = i + count0 - k - 1
-          if ffIdx < sampleCount then
-            output += (input(ffIdx).toLong * feedforwardCoefs(k)) >> 16
+        while k < coefCount do
+          floatCoefs(0)(k) *= floatInvA0
           k += 1
 
-        k = 0
-        while k < count1 do
-          val fbIdx = i - k - 1
-          if fbIdx >= 0 then
-            output -= (buffer(fbIdx).toLong * feedbackCoefs(k)) >> 16
-          k += 1
+      var k = 0
+      while k < coefCount do
+        iCoef(k) = (floatCoefs(dir)(k) * Int16.Range).toInt
+        k += 1
 
-        buffer(i) = output.toInt
-
-        if envelopeEval.isDefined then
-          t = envelopeEval.get.evaluate(sampleCount)
-          envelopeFactor = t / 65536.0f
-
-        i += 1
-
-      if i < sampleCount then
-        val res = updateCoefficients()
-        count0 = res._1
-        count1 = res._2
-        inverseA0 = res._3
-
-  private def compute(
-      filter: Filter,
-      dir: Int,
-      envelopeFactor: Float,
-      fCoef: Array[Array[Float]],
-      iCoef: Array[Int],
-      floatInvA0: Float
-  ): Int =
-    val pairCount = filter.pairCounts(dir)
-    if pairCount == 0 then return 0
-
-    val amp = getAmplitude(filter, dir, 0, envelopeFactor)
-    val phase = calculatePhase(filter, dir, 0, envelopeFactor)
-    val cosPhase = Math.cos(phase).toFloat
-
-    fCoef(dir)(0) = -2.0f * amp * cosPhase
-    fCoef(dir)(1) = amp * amp
-
-    for p <- 1 until pairCount do
-      val ampP = getAmplitude(filter, dir, p, envelopeFactor)
-      val phaseP = calculatePhase(filter, dir, p, envelopeFactor)
-      val cosPhaseP = Math.cos(phaseP).toFloat
-
-      val term1 = -2.0f * ampP * cosPhaseP
-      val term2 = ampP * ampP
-
-      // Cascade/Convolve coefficients
-      fCoef(dir)(p * 2 + 1) = fCoef(dir)(p * 2 - 1) * term2
-      fCoef(dir)(p * 2) =
-        fCoef(dir)(p * 2 - 1) * term1 + fCoef(dir)(p * 2 - 2) * term2
-
-      for k <- (p * 2 - 1) to 2 by -1 do
-        fCoef(dir)(k) += fCoef(dir)(k - 1) * term1 + fCoef(dir)(k - 2) * term2
-
-      fCoef(dir)(1) += fCoef(dir)(0) * term1 + term2
-      fCoef(dir)(0) += term1
-
-    if dir == 0 then for k <- 0 until pairCount * 2 do fCoef(0)(k) *= floatInvA0
-
-    for k <- 0 until pairCount * 2 do
-      iCoef(k) = (fCoef(dir)(k) * 65536.0f).toInt
-
-    pairCount * 2
+      coefCount
 
   private def getAmplitude(
       filter: Filter,
@@ -155,6 +200,5 @@ object FilterSynthesizer:
     getOctavePhase(scaledPhase)
 
   private def getOctavePhase(pow2Value: Float): Float =
-    // 32.7032 Hz ~ C1
     val frequencyHz = Math.pow(2.0, pow2Value) * 32.703197
     (frequencyHz * TwoPi / Constants.SampleRate).toFloat
