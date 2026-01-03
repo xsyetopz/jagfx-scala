@@ -13,7 +13,23 @@ class EnvelopeViewModel extends IViewModel:
   private var segments: Vector[EnvelopeSegment] = Vector.empty
 
   def getSegments: Vector[Int] = segments.map(_.peak)
+
   def getFullSegments: Vector[EnvelopeSegment] = segments
+
+  def addSegment(duration: Int, peak: Int): Unit =
+    segments = segments :+ EnvelopeSegment(duration, peak)
+    notifyListeners()
+
+  def removeSegment(index: Int): Unit =
+    if index >= 0 && index < segments.length then
+      segments = segments.patch(index, Nil, 1)
+      notifyListeners()
+
+  def updateSegment(index: Int, duration: Int, peak: Int): Unit =
+    if index >= 0 && index < segments.length then
+      segments = segments.updated(index, EnvelopeSegment(duration, peak))
+      notifyListeners()
+
   def isEmpty: Boolean = segments.isEmpty && form.get == WaveForm.Off
   def isZero: Boolean =
     start.get == 0 && end.get == 0 && segments.forall(_.peak == 0)
