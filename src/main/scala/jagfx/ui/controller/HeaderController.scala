@@ -2,7 +2,7 @@ package jagfx.ui.controller
 
 import javafx.embed.swing.SwingFXUtils
 import javafx.scene.layout._
-import javafx.scene.control.Label
+import javafx.scene.control._
 import javafx.stage.FileChooser
 import jagfx.ui.viewmodel.SynthViewModel
 import jagfx.ui.components._
@@ -14,23 +14,37 @@ import scala.util.Using
 import java.nio.file.Files
 import jagfx.Constants
 import jagfx.utils._
-import javafx.geometry.Pos
+import javafx.geometry._
+import javafx.scene.text._
+import javafx.animation.AnimationTimer
 
-class HeaderController(viewModel: SynthViewModel) extends IController[HBox]:
+class HeaderController(viewModel: SynthViewModel) extends IController[GridPane]:
   import Constants._
   private var currentFile: Option[File] = None
   private var currentClip: Option[Clip] = None
-  private var playheadTimer: Option[javafx.animation.AnimationTimer] = None
+  private var playheadTimer: Option[AnimationTimer] = None
 
   /** Callback for playhead position updates (`0.0` to `1.0`, or `-1` when
     * stopped).
     */
   var onPlayheadUpdate: Double => Unit = _ => ()
 
-  protected val view = HBox()
+  protected val view = GridPane()
   view.getStyleClass.add("header")
-  view.setSpacing(4)
-  view.setAlignment(Pos.CENTER_LEFT)
+
+  private val col1 = ColumnConstraints()
+  col1.setPercentWidth(25)
+  col1.setHalignment(HPos.LEFT)
+
+  private val col2 = ColumnConstraints()
+  col2.setPercentWidth(50)
+  col2.setHalignment(HPos.CENTER)
+
+  private val col3 = ColumnConstraints()
+  col3.setPercentWidth(25)
+  col3.setHalignment(HPos.RIGHT)
+
+  view.getColumnConstraints.addAll(col1, col2, col3)
 
   private val transportGroup = createTransportGroup()
   private val tgtGroup = createTargetGroup()
@@ -38,32 +52,43 @@ class HeaderController(viewModel: SynthViewModel) extends IController[HBox]:
   private val loopGroup = createLoopGroup()
   private val fileGroup = createFileGroup()
 
-  private val leftGroup = HBox(4)
+  private val leftGroup = HBox(2)
   leftGroup.setAlignment(Pos.CENTER_LEFT)
-  leftGroup.setMinWidth(170)
-  leftGroup.setPrefWidth(170)
-  leftGroup.setMaxWidth(170)
+  leftGroup.setPickOnBounds(false)
 
-  private val title = Label("JAGFX")
-  title.setStyle(
-    "-fx-font-size: 14px; -fx-font-weight: 900; -fx-text-fill: #f0f0f0; -fx-padding: 0 4px 0 0;"
+  private val title = new TextFlow()
+  title.setPadding(new Insets(0, 6, 0, 0))
+
+  val txtJag = new Text("JAG")
+  txtJag.setStyle(
+    "-fx-fill: #f0f0f0; -fx-font-weight: 900; -fx-font-size: 14px;"
+  )
+  val txtFx = new Text("FX")
+  txtFx.setStyle(
+    "-fx-fill: #33bbee; -fx-font-weight: 900; -fx-font-size: 14px;"
   )
 
-  leftGroup.getChildren.addAll(title, transportGroup)
+  title.getChildren.addAll(txtJag, txtFx)
 
-  private val centerGroup = HBox(4)
+  val separator =
+    new Separator(Orientation.VERTICAL)
+  separator.setPadding(new Insets(0, 4, 0, 4))
+
+  leftGroup.getChildren.addAll(title, separator, transportGroup)
+
+  private val centerGroup = HBox(2)
   centerGroup.setAlignment(Pos.CENTER)
-  HBox.setHgrow(centerGroup, Priority.ALWAYS)
+  centerGroup.setPickOnBounds(false)
   centerGroup.getChildren.addAll(tgtGroup, lenPosGroup, loopGroup)
 
-  private val rightGroup = HBox(4)
+  private val rightGroup = HBox(2)
   rightGroup.setAlignment(Pos.CENTER_RIGHT)
-  rightGroup.setMinWidth(170)
-  rightGroup.setPrefWidth(170)
-  rightGroup.setMaxWidth(170)
+  rightGroup.setPickOnBounds(false)
   rightGroup.getChildren.add(fileGroup)
 
-  view.getChildren.addAll(leftGroup, centerGroup, rightGroup)
+  view.add(leftGroup, 0, 0)
+  view.add(centerGroup, 1, 0)
+  view.add(rightGroup, 2, 0)
 
   private def createTransportGroup(): HBox =
     val btnPlay = JagButton("")
@@ -84,12 +109,12 @@ class HeaderController(viewModel: SynthViewModel) extends IController[HBox]:
       btnLoop.setActive(enabled)
     )
 
-    val group = HBox(4, btnPlay, btnStop, btnLoop)
+    val group = HBox(2, btnPlay, btnStop, btnLoop)
     group.getStyleClass.add("h-grp")
     group
 
   private def createTargetGroup(): HBox =
-    val group = HBox(4)
+    val group = HBox(2)
     group.getStyleClass.add("h-grp")
 
     val btnTone = JagButton("TONE")
@@ -107,7 +132,7 @@ class HeaderController(viewModel: SynthViewModel) extends IController[HBox]:
     group
 
   private def createLenPosGroup(): HBox =
-    val group = HBox(4)
+    val group = HBox(2)
     group.getStyleClass.add("h-grp")
     val lenField = JagNumericField(0, Int16.Range, 1200)
     lenField.valueProperty.bindBidirectional(viewModel.totalDurationProperty)
@@ -116,7 +141,7 @@ class HeaderController(viewModel: SynthViewModel) extends IController[HBox]:
     group
 
   private def createLoopGroup(): HBox =
-    val group = HBox(4)
+    val group = HBox(2)
     group.getStyleClass.add("h-grp")
 
     val l1 = JagNumericField(0, Int16.Range, 0)
@@ -147,7 +172,7 @@ class HeaderController(viewModel: SynthViewModel) extends IController[HBox]:
     group
 
   private def createFileGroup(): HBox =
-    val group = HBox(4)
+    val group = HBox(2)
     group.setStyle("-fx-border-color: transparent;")
     group.setAlignment(Pos.CENTER)
 
@@ -236,9 +261,8 @@ class HeaderController(viewModel: SynthViewModel) extends IController[HBox]:
       clip.loop(if count == 0 then Clip.LOOP_CONTINUOUSLY else count - 1)
     else clip.start()
 
-    // start playhead timer
     val totalFrames = clip.getFrameLength.toDouble
-    val timer = new javafx.animation.AnimationTimer:
+    val timer = new AnimationTimer:
       def handle(now: Long): Unit =
         currentClip.foreach { c =>
           if c.isRunning then
