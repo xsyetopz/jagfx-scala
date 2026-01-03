@@ -29,6 +29,8 @@ package jagfx.model
   *   Total tone length in milliseconds
   * @param start
   *   Offset from track start in milliseconds
+  * @param filter
+  *   Optional: IIR filter parameters
   */
 case class Tone(
     pitchEnvelope: Envelope,
@@ -43,5 +45,6 @@ case class Tone(
     reverbDelay: Int,
     reverbVolume: Int,
     duration: Int,
-    start: Int
+    start: Int,
+    filter: Option[Filter] = None
 )
