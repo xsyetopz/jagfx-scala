@@ -88,7 +88,7 @@ class InspectorController(viewModel: SynthViewModel) extends IController[VBox]:
 
     private val waveGrid = JagToggleGroup(
       ("Off", "mdi2v-volume-off"),
-      ("Sq", "mdi2s-square-wave"),
+      ("Sqr", "mdi2s-square-wave"),
       ("Sin", "mdi2s-sine-wave"),
       ("Saw", "mdi2s-sawtooth-wave"),
       ("Nse", "mdi2w-waveform")
