@@ -2,7 +2,7 @@ package jagfx.utils
 
 /** Colors synced with `_variables.scss`. */
 object ColorUtils:
-  // Backgrounds (from SCSS)
+  // Backgrounds
   val BgBlack: Int = 0xff000000
 
   // Borders
@@ -18,6 +18,10 @@ object ColorUtils:
   val FilterPole: Int = 0xff009988 // teal for poles
   val FilterZero: Int = 0xffcc3311 // red-orange for zeros
   val FilterResponse: Int = 0xff33bb99 // frequency response curve
+
+  // Semantic
+  val Output: Int = 0xff009e73 // $color-output
+  val Gating: Int = 0xffcc79a7 // $color-gating
 
   // Grid
   val GridLineFaint: Int = 0xff2a2a2a
