@@ -3,11 +3,12 @@ package jagfx.synth
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.Arrays
 
+private val MaxPoolSize = 20
+private val MaxBufferSize = 1048576 // 1024 * 1024
+
 /** Thread-safe pool for reusable integer arrays. */
 object BufferPool:
   private val pool = new ConcurrentLinkedQueue[(Int, Array[Int])]()
-  private val MaxPoolSize = 20
-  private val MaxBufferSize = 1048576 // 1024 * 1024
 
   /** Acquires buffer of at least `minSize` elements, zero-filled. */
   def acquire(minSize: Int): Array[Int] =
