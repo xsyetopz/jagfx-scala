@@ -10,6 +10,7 @@ import javafx.beans.value.ChangeListener
 import jagfx.ui.viewmodel.RackMode
 import jagfx.utils.IconUtils
 import javafx.geometry.Pos
+import jagfx.Constants
 
 class FooterController(viewModel: SynthViewModel):
   private val view = HBox()
@@ -54,8 +55,9 @@ class FooterController(viewModel: SynthViewModel):
     col2.setPercentWidth(50)
     grid.getColumnConstraints.addAll(col1, col2)
 
-    val buttons = new Array[JagButton](10)
-    for i <- 0 until 10 do
+    import Constants._
+    val buttons = new Array[JagButton](MaxTones)
+    for i <- 0 until MaxTones do
       val btn = JagButton((i + 1).toString)
       btn.setMaxWidth(Double.MaxValue)
       btn.setOnAction(_ =>
