@@ -32,7 +32,7 @@ object ToneSynthesizer:
     val samplesPerStep = sampleCount.toDouble / tone.duration.toDouble
     val buffer = new Array[Int](sampleCount)
 
-    val state = initializeSynthState(tone, samplesPerStep, sampleCount)
+    val state = initSynthState(tone, samplesPerStep, sampleCount)
     renderSamples(buffer, tone, state, sampleCount)
 
     if tone.gateSilence.isDefined then scribe.debug("Applying gate effect...")
@@ -44,7 +44,11 @@ object ToneSynthesizer:
       )
     applyReverb(buffer, tone, samplesPerStep, sampleCount)
 
-    deClick(buffer, sampleCount)
+    tone.filter.foreach { f =>
+      scribe.debug("Applying IIR filter...")
+      FilterSynthesizer.apply(buffer, f, sampleCount)
+    }
+
     clipBuffer(buffer, sampleCount)
 
     AudioBuffer(buffer, SampleRate)
@@ -66,7 +70,7 @@ object ToneSynthesizer:
       harmonicStarts: Array[Int]
   )
 
-  private def initializeSynthState(
+  private def initSynthState(
       tone: Tone,
       samplesPerStep: Double,
       sampleCount: Int
@@ -77,13 +81,13 @@ object ToneSynthesizer:
     ampBaseEval.reset()
 
     val (freqModRateEval, freqModRangeEval, frequencyStart, frequencyDuration) =
-      initializeFrequencyModulation(tone, samplesPerStep)
+      initFrequencyModulation(tone, samplesPerStep)
 
     val (ampModRateEval, ampModRangeEval, amplitudeStart, amplitudeDuration) =
-      initializeAmplitudeModulation(tone, samplesPerStep)
+      initAmplitudeModulation(tone, samplesPerStep)
 
     val (delays, volumes, semitones, starts) =
-      initializeHarmonics(tone, samplesPerStep)
+      initHarmonics(tone, samplesPerStep)
 
     SynthState(
       freqBaseEval,
@@ -102,7 +106,7 @@ object ToneSynthesizer:
       starts
     )
 
-  private def initializeFrequencyModulation(
+  private def initFrequencyModulation(
       tone: Tone,
       samplesPerStep: Double
   ): (Option[EnvelopeEvaluator], Option[EnvelopeEvaluator], Int, Int) =
@@ -118,7 +122,7 @@ object ToneSynthesizer:
       case None =>
         (None, None, 0, 0)
 
-  private def initializeAmplitudeModulation(
+  private def initAmplitudeModulation(
       tone: Tone,
       samplesPerStep: Double
   ): (Option[EnvelopeEvaluator], Option[EnvelopeEvaluator], Int, Int) =
@@ -134,7 +138,7 @@ object ToneSynthesizer:
       case None =>
         (None, None, 0, 0)
 
-  private def initializeHarmonics(
+  private def initHarmonics(
       tone: Tone,
       samplesPerStep: Double
   ): (Array[Int], Array[Int], Array[Int], Array[Int]) =
@@ -265,13 +269,19 @@ object ToneSynthesizer:
         releaseEval.reset()
         attackEval.reset()
         var counter = 0
+        var muted = true
         for sample <- 0 until sampleCount do
-          val releaseValue = releaseEval.evaluate(sampleCount)
-          val attackValue = attackEval.evaluate(sampleCount)
+          val stepOn = releaseEval.evaluate(sampleCount)
+          val stepOff = attackEval.evaluate(sampleCount)
           val threshold =
-            release.start + ((release.end - release.start) * attackValue >> 8)
+            if muted then
+              release.start + ((release.end - release.start) * stepOn >> 8)
+            else release.start + ((release.end - release.start) * stepOff >> 8)
           counter += 256
-          if counter >= threshold then counter = 0
+          if counter >= threshold then
+            counter = 0
+            muted = !muted
+          if muted then buffer(sample) = 0
       case _ => ()
 
   private def applyReverb(
@@ -290,14 +300,3 @@ object ToneSynthesizer:
     for sample <- 0 until sampleCount do
       if buffer(sample) < Int16.Min then buffer(sample) = Int16.Min
       if buffer(sample) > Int16.Max then buffer(sample) = Int16.Max
-
-  private def deClick(buffer: Array[Int], sampleCount: Int): Unit =
-    // 2ms micro-fade --> prevent DC offset clicks
-    val fadeLen = math.min(50, sampleCount / 2)
-    if fadeLen > 0 then
-      for i <- 0 until fadeLen do
-        // Fade In
-        buffer(i) = (buffer(i) * i) / fadeLen
-        // Fade Out
-        val endIdx = sampleCount - 1 - i
-        buffer(endIdx) = (buffer(endIdx) * i) / fadeLen
