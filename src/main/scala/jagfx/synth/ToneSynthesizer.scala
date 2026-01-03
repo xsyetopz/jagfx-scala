@@ -17,8 +17,9 @@ private val HalfPhase: Int = 16384
 object ToneSynthesizer:
   private val SampleRate = Constants.SampleRate
 
-  /** Generates audio samples from `Tone` definition. Returns `AudioBuffer` with
-    * rendered samples.
+  /** Generates audio samples from `Tone` definition.
+    *
+    * Returns `AudioBuffer` with rendered samples.
     */
   def synthesize(tone: Tone): AudioBuffer =
     val sampleCount = tone.duration * SampleRate / 1000
@@ -31,7 +32,7 @@ object ToneSynthesizer:
     )
 
     val samplesPerStep = sampleCount.toDouble / tone.duration.toDouble
-    val buffer = new Array[Int](sampleCount)
+    val buffer = BufferPool.acquire(sampleCount)
 
     val state = initSynthState(tone, samplesPerStep, sampleCount)
     renderSamples(buffer, tone, state, sampleCount)
@@ -52,7 +53,9 @@ object ToneSynthesizer:
 
     clipBuffer(buffer, sampleCount)
 
-    AudioBuffer(buffer, SampleRate)
+    val result = AudioBuffer(buffer.clone(), SampleRate)
+    BufferPool.release(buffer)
+    result
 
   private case class SynthState(
       freqBaseEval: EnvelopeEvaluator,
@@ -154,11 +157,8 @@ object ToneSynthesizer:
         delays(harmonic) = (h.delay * samplesPerStep).toInt
         volumes(harmonic) = (h.volume << 14) / 100
         semitones(harmonic) =
-          ((tone.pitchEnvelope.end - tone.pitchEnvelope.start) * PhaseScale * math
-            .pow(
-              SemitoneBase,
-              h.semitone
-            ) / samplesPerStep).toInt
+          ((tone.pitchEnvelope.end - tone.pitchEnvelope.start) * PhaseScale *
+            math.pow(SemitoneBase, h.semitone) / samplesPerStep).toInt
         starts(harmonic) =
           (tone.pitchEnvelope.start * PhaseScale / samplesPerStep).toInt
 
@@ -252,10 +252,10 @@ object ToneSynthesizer:
       case WaveForm.Square =>
         if (phase & PhaseMask) < HalfPhase then amplitude else -amplitude
       case WaveForm.Sine =>
-        (WaveTables.sin(phase & PhaseMask) * amplitude) >> 14
+        (LookupTables.sin(phase & PhaseMask) * amplitude) >> 14
       case WaveForm.Saw => (((phase & PhaseMask) * amplitude) >> 14) - amplitude
       case WaveForm.Noise =>
-        WaveTables.noise((phase / NoisePhaseDiv) & PhaseMask) * amplitude
+        LookupTables.noise((phase / NoisePhaseDiv) & PhaseMask) * amplitude
       case WaveForm.Off => 0
 
   private def applyGating(
