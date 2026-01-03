@@ -1,7 +1,7 @@
 package jagfx.ui.viewmodel
 
 import javafx.beans.property._
-import javafx.collections.{FXCollections, ObservableList}
+import javafx.collections._
 import jagfx.model._
 import jagfx.Constants
 
