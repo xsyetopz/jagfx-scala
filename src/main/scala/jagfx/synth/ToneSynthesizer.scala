@@ -14,14 +14,12 @@ private val HalfPhase: Int = 16384
   * additive synthesis.
   */
 object ToneSynthesizer:
-  private val SampleRate = Constants.SampleRate
-
   /** Generates audio samples from `Tone` definition.
     *
     * Returns `AudioBuffer` with rendered samples.
     */
   def synthesize(tone: Tone): AudioBuffer =
-    val sampleCount = tone.duration * SampleRate / 1000
+    val sampleCount = tone.duration * Constants.SampleRate / 1000
     if sampleCount <= 0 || tone.duration < 10 then return AudioBuffer.empty(0)
 
     val samplesPerStep = sampleCount.toDouble / tone.duration.toDouble
@@ -39,7 +37,7 @@ object ToneSynthesizer:
 
     clipBuffer(buffer, sampleCount)
 
-    val result = AudioBuffer(buffer.clone(), SampleRate)
+    val result = AudioBuffer(buffer.clone(), Constants.SampleRate)
     BufferPool.release(buffer)
     result
 
