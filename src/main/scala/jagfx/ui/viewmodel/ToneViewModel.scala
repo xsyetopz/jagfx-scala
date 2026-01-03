@@ -31,6 +31,26 @@ class ToneViewModel:
   // Harmonics (10 slots)
   val harmonics = Array.fill(Constants.MaxHarmonics)(new HarmonicViewModel())
 
+  private var listeners: List[() => Unit] = Nil
+
+  def addChangeListener(cb: () => Unit): Unit =
+    listeners = cb :: listeners
+    Seq(
+      pitch,
+      volume,
+      vibratoRate,
+      vibratoDepth,
+      tremoloRate,
+      tremoloDepth,
+      gateSilence,
+      gateDuration
+    )
+      .foreach(_.addChangeListener(cb))
+    harmonics.foreach(_.addChangeListener(cb))
+
+  private def notifyListeners(): Unit =
+    listeners.foreach(_())
+
   def load(toneOpt: Option[Tone]): Unit =
     toneOpt match
       case Some(t) =>
@@ -57,7 +77,7 @@ class ToneViewModel:
         reverbDelay.set(t.reverbDelay)
         reverbVolume.set(t.reverbVolume)
 
-        for i <- 0 until 10 do
+        for i <- 0 until Constants.MaxTones do
           if i < t.harmonics.length then harmonics(i).load(t.harmonics(i))
           else harmonics(i).clear()
 
@@ -108,6 +128,15 @@ class HarmonicViewModel:
   val semitone = new SimpleIntegerProperty(0)
   val volume = new SimpleIntegerProperty(0)
   val delay = new SimpleIntegerProperty(0)
+
+  private var listeners: List[() => Unit] = Nil
+
+  def addChangeListener(cb: () => Unit): Unit =
+    listeners = cb :: listeners
+    active.addListener((_, _, _) => cb())
+    semitone.addListener((_, _, _) => cb())
+    volume.addListener((_, _, _) => cb())
+    delay.addListener((_, _, _) => cb())
 
   def load(h: Harmonic): Unit =
     active.set(true)
