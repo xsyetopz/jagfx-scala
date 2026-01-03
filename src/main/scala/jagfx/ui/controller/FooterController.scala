@@ -23,13 +23,15 @@ class FooterController(viewModel: SynthViewModel) extends IController[HBox]:
 
   view.getChildren.addAll(tonesPanel, harmonicsPanel, reverbPanel, modePanel)
 
+  private val leftRightSize = 70
+
   private def createTonesPanel(): VBox =
     val panel = VBox()
     panel.setId("tones-panel")
     panel.getStyleClass.add("panel")
-    panel.setMinWidth(70)
-    panel.setPrefWidth(70)
-    panel.setMaxWidth(70)
+    panel.setMinWidth(leftRightSize)
+    panel.setPrefWidth(leftRightSize)
+    panel.setMaxWidth(leftRightSize)
     HBox.setHgrow(panel, Priority.NEVER)
 
     val head = Label("TONES")
@@ -79,13 +81,17 @@ class FooterController(viewModel: SynthViewModel) extends IController[HBox]:
     ops.setId("tone-ops")
     val copyBtn = JagButton("")
     copyBtn.setGraphic(IconUtils.icon("mdi2c-content-copy"))
-    val resetBtn = JagButton("")
-    resetBtn.setGraphic(IconUtils.icon("mdi2u-undo"))
+    val pasteBtn = JagButton("")
+    pasteBtn.setGraphic(IconUtils.icon("mdi2c-content-paste"))
     HBox.setHgrow(copyBtn, Priority.ALWAYS)
-    HBox.setHgrow(resetBtn, Priority.ALWAYS)
+    HBox.setHgrow(pasteBtn, Priority.ALWAYS)
     copyBtn.setMaxWidth(Double.MaxValue)
-    resetBtn.setMaxWidth(Double.MaxValue)
-    ops.getChildren.addAll(copyBtn, resetBtn)
+    pasteBtn.setMaxWidth(Double.MaxValue)
+
+    copyBtn.setOnAction(_ => viewModel.copyActiveTone())
+    pasteBtn.setOnAction(_ => viewModel.pasteToActiveTone())
+
+    ops.getChildren.addAll(copyBtn, pasteBtn)
 
     container.getChildren.addAll(grid, ops)
     panel.getChildren.addAll(head, container)
@@ -113,9 +119,9 @@ class FooterController(viewModel: SynthViewModel) extends IController[HBox]:
       val label = Label(s"H${i + 1}")
       label.getStyleClass.add("h-head")
 
-      val sRow = new HarmonicsRow("S", -120, 120, 9.0, "%.1f")
-      val vRow = new HarmonicsRow("V", 0, 100)
-      val dRow = new HarmonicsRow("D", 0, 1000)
+      val sRow = new HarmonicsRow("SEMI", -120, 120, 9.0, "%.1f")
+      val vRow = new HarmonicsRow("VOL", 0, 100)
+      val dRow = new HarmonicsRow("DEL", 0, 1000)
 
       strip.getChildren.addAll(label, sRow.view, vRow.view, dRow.view)
       grid.getChildren.add(strip)
@@ -222,9 +228,9 @@ class FooterController(viewModel: SynthViewModel) extends IController[HBox]:
   private def createModePanel(): VBox =
     val panel = VBox()
     panel.getStyleClass.add("panel")
-    panel.setMinWidth(70)
-    panel.setPrefWidth(70)
-    panel.setMaxWidth(70)
+    panel.setMinWidth(leftRightSize)
+    panel.setPrefWidth(leftRightSize)
+    panel.setMaxWidth(leftRightSize)
     HBox.setHgrow(panel, Priority.NEVER)
 
     val head = Label("MODE")
