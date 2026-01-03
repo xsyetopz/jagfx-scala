@@ -10,6 +10,7 @@ import jagfx.ui.components.button._
 import jagfx.ui.components.field._
 import jagfx.Constants
 import jagfx.utils._
+import javafx.beans.property.SimpleBooleanProperty
 
 /** Header controller containing transport, file, and settings controls. */
 class HeaderController(viewModel: SynthViewModel) extends IController[GridPane]:
@@ -24,21 +25,24 @@ class HeaderController(viewModel: SynthViewModel) extends IController[GridPane]:
     audioPlayer.onPlayheadUpdate = f
 
   protected val view = GridPane()
-  view.getStyleClass.add("header")
+  view.getStyleClass.add("header-grid")
+  view.getStyleClass.add("header-root")
 
   private val col1 = ColumnConstraints()
-  col1.setPercentWidth(25)
+  col1.setPercentWidth(20)
   col1.setHalignment(HPos.LEFT)
 
   private val col2 = ColumnConstraints()
-  col2.setPercentWidth(50)
+  col2.setPercentWidth(60)
   col2.setHalignment(HPos.CENTER)
 
   private val col3 = ColumnConstraints()
-  col3.setPercentWidth(25)
-  col3.setHalignment(HPos.CENTER)
+  col3.setPercentWidth(20)
+  col3.setHalignment(HPos.RIGHT)
 
   view.getColumnConstraints.addAll(col1, col2, col3)
+
+  private val LoopParamSize = 34
 
   private val transportGroup = createTransportGroup()
   private val tgtGroup = createTargetGroup()
@@ -46,45 +50,22 @@ class HeaderController(viewModel: SynthViewModel) extends IController[GridPane]:
   private val loopGroup = createLoopGroup()
   private val fileGroup = createFileGroup()
   private val btn16 = create16BitButton()
-  private val btnInit = createInitButton()
 
   private val leftGroup = HBox(2)
   leftGroup.setAlignment(Pos.CENTER_LEFT)
   leftGroup.setPickOnBounds(false)
 
-  private val title = new TextFlow()
-  title.setPadding(new Insets(0, 6, 0, 0))
-
-  val txtJag = new Text("JAG")
-  txtJag.setStyle(
-    "-fx-fill: #f0f0f0; -fx-font-weight: 900; -fx-font-size: 14px;"
-  )
-  val txtFx = new Text("FX")
-  txtFx.setStyle(
-    "-fx-fill: #33bbee; -fx-font-weight: 900; -fx-font-size: 14px;"
-  )
-
-  title.getChildren.addAll(txtJag, txtFx)
-
-  val separator = new Separator(Orientation.VERTICAL)
-  separator.setPadding(new Insets(0, 4, 0, 4))
-
-  leftGroup.getChildren.addAll(title, separator, transportGroup)
+  leftGroup.getChildren.add(transportGroup)
 
   private val centerGroup = HBox(2)
   centerGroup.setAlignment(Pos.CENTER)
   centerGroup.setPickOnBounds(false)
-  centerGroup.getChildren.addAll(tgtGroup, lenPosGroup, loopGroup)
+  centerGroup.getChildren.addAll(tgtGroup, lenPosGroup, loopGroup, btn16)
 
   private val rightGroup = HBox(2)
   rightGroup.setAlignment(Pos.CENTER_RIGHT)
   rightGroup.setPickOnBounds(false)
-  rightGroup.setMaxWidth(Double.MaxValue)
-
-  val rightSpacer = new Region()
-  HBox.setHgrow(rightSpacer, Priority.ALWAYS)
-
-  rightGroup.getChildren.addAll(btn16, btnInit, rightSpacer, fileGroup)
+  rightGroup.getChildren.addAll(fileGroup)
 
   view.add(leftGroup, 0, 0)
   view.add(centerGroup, 1, 0)
@@ -117,52 +98,69 @@ class HeaderController(viewModel: SynthViewModel) extends IController[GridPane]:
     val group = HBox(2)
     group.getStyleClass.add("h-grp")
 
-    val btnTone = JagButton("TONE")
     val btnAll = JagButton("ALL")
-    btnTone.setOnAction(_ => viewModel.targetModeProperty.set(false))
+    val btnOne = JagButton("ONE")
+
     btnAll.setOnAction(_ => viewModel.targetModeProperty.set(true))
+    btnOne.setOnAction(_ => viewModel.targetModeProperty.set(false))
 
     viewModel.targetModeProperty.addListener((_, _, isAll) =>
-      btnTone.setActive(!isAll)
       btnAll.setActive(isAll)
+      btnOne.setActive(!isAll)
     )
-    btnTone.setActive(true)
+    btnOne.setActive(true)
 
-    group.getChildren.addAll(Label("TGT"), btnTone, btnAll)
+    group.getChildren.addAll(Label("TGT"), btnOne, btnAll)
     group
 
   private def createLenPosGroup(): HBox =
     val group = HBox(2)
     group.getStyleClass.add("h-grp")
-    val lenField = JagNumericField(0, Int16.Range, 1200)
-    lenField.valueProperty.bindBidirectional(viewModel.totalDurationProperty)
-    val posField = JagNumericField(0, Int16.Range, 0)
-    group.getChildren.addAll(Label("LEN"), lenField, Label("POS"), posField)
+    val durationField = JagNumericField(0, Int16.Range, 1200)
+    durationField.setEditable(false)
+    durationField.valueProperty.bindBidirectional(
+      viewModel.totalDurationProperty
+    )
+    val startOffsetField = JagNumericField(0, Int16.Range, 0)
+    group.getChildren.addAll(
+      Label("DUR:"),
+      durationField,
+      Label("STO:"),
+      startOffsetField
+    )
     group
 
   private def createLoopGroup(): HBox =
     val group = HBox(2)
     group.getStyleClass.add("h-grp")
 
-    val l1 = JagNumericField(0, Int16.Range, 0)
-    l1.setPrefWidth(34)
-    l1.valueProperty.bindBidirectional(viewModel.loopStartProperty)
+    val fldL1 = JagNumericField(0, Int16.Range, 0)
+    fldL1.setPrefWidth(LoopParamSize)
+    fldL1.valueProperty.bindBidirectional(viewModel.loopStartProperty)
 
-    val l2 = JagNumericField(0, Int16.Range, 0)
-    l2.setPrefWidth(34)
-    l2.valueProperty.bindBidirectional(viewModel.loopEndProperty)
+    val fldL2 = JagNumericField(0, Int16.Range, 0)
+    fldL2.setPrefWidth(LoopParamSize)
+    fldL2.valueProperty.bindBidirectional(viewModel.loopEndProperty)
 
-    val cnt = JagNumericField(0, 100, 0)
-    cnt.setPrefWidth(24)
-    cnt.valueProperty.bindBidirectional(viewModel.loopCountProperty)
+    val fldCnt = JagNumericField(0, 100, 0)
+    fldCnt.setPrefWidth(LoopParamSize - 10)
+    fldCnt.valueProperty.bindBidirectional(viewModel.loopCountProperty)
+
+    val lblStart = Label("S:")
+    lblStart.getStyleClass.add("label")
+    lblStart.setMinWidth(Region.USE_PREF_SIZE)
+
+    val lblEnd = Label("E:")
+    lblEnd.getStyleClass.add("label")
+    lblEnd.setMinWidth(Region.USE_PREF_SIZE)
 
     group.getChildren.addAll(
-      Label("L1"),
-      l1,
-      Label("L2"),
-      l2,
-      Label("CNT"),
-      cnt
+      lblStart,
+      fldL1,
+      lblEnd,
+      fldL2,
+      Label("xN"),
+      fldCnt
     )
 
     viewModel.loopEnabledProperty.addListener((_, _, enabled) =>
@@ -190,14 +188,9 @@ class HeaderController(viewModel: SynthViewModel) extends IController[GridPane]:
     group.getChildren.addAll(btnOpen, btnSave, btnExport)
     group
 
-  private def createInitButton(): JagButton =
-    val btn = JagButton()
-    btn.setGraphic(IconUtils.icon("mdi2f-file-plus"))
-    btn.setOnAction(_ => viewModel.reset())
-    btn
-
   private def create16BitButton(): JagButton =
     val btn16 = JagButton("16-BIT")
+    btn16.setTooltip(new Tooltip("8-bit (OFF) / 16-bit (ON)"))
     btn16.setOnAction(_ =>
       UserPreferences.export16Bit.set(!UserPreferences.export16Bit.get)
     )
