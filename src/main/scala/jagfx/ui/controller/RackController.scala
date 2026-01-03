@@ -44,17 +44,17 @@ class RackController(viewModel: SynthViewModel, inspector: InspectorController)
       CellType.Envelope(_.pitch)
     ),
     RackCellDef(
-      "VIBRATO RATE",
+      "V.RATE",
       "Modulates speed of vibrato (FM). Higher values create faster pitch wobbling.",
       CellType.Envelope(_.vibratoRate)
     ),
     RackCellDef(
-      "VIBRATO DEPTH",
+      "V.DEPTH",
       "Controls intensity of vibrato. Higher values cause wider pitch variations.",
       CellType.Envelope(_.vibratoDepth)
     ),
     RackCellDef(
-      "FILTER POLES/ZEROS",
+      "P/Z",
       "Visualizes IIR filter poles/zeros. Drag points to shape frequency response.",
       CellType.Filter
     ),
@@ -64,12 +64,12 @@ class RackController(viewModel: SynthViewModel, inspector: InspectorController)
       CellType.Envelope(_.volume)
     ),
     RackCellDef(
-      "TREMOLO RATE",
+      "T.RATE",
       "Modulates speed of tremolo (AM). Higher values create faster volume fluctuations.",
       CellType.Envelope(_.tremoloRate)
     ),
     RackCellDef(
-      "TREMOLO DEPTH",
+      "T.DEPTH",
       "Controls intensity of tremolo. Higher values create deeper volume cuts.",
       CellType.Envelope(_.tremoloDepth)
     ),
@@ -84,17 +84,17 @@ class RackController(viewModel: SynthViewModel, inspector: InspectorController)
       CellType.Output
     ),
     RackCellDef(
-      "GATE SILENCE",
+      "G.SIL",
       "Sets initial delay (silence) before note begins playing.",
       CellType.Envelope(_.gateSilence)
     ),
     RackCellDef(
-      "GATE DURATION",
+      "G.DUR",
       "Determines total length of active note segment in samples.",
       CellType.Envelope(_.gateDuration)
     ),
     RackCellDef(
-      "FILTER RESPONSE",
+      "BODE",
       "Displays frequency magnitude response (Bode plot) of active filter.",
       CellType.Filter
     )
@@ -142,10 +142,18 @@ class RackController(viewModel: SynthViewModel, inspector: InspectorController)
     cells(idx) = cell
   }
 
-  private val bindingManager = BindingManager()
+  private val filterDisplay = new VBox(2):
+    getChildren.addAll(poleZeroCanvas, freqResponseCanvas)
+    VBox.setVgrow(freqResponseCanvas, Priority.ALWAYS)
 
-  bindingManager.listen(viewModel.rackMode)(_ => buildGrid())
-  bindingManager.listen(viewModel.selectedCellIndex)(_ => updateSelection())
+  /*
+      PITCH    | VOLUME   | FILTER   | [FILTER DISPLAY]
+      V.RATE   | T.RATE   | G.SIL    | [FILTER DISPLAY]
+      V.DEPTH  | T.DEPTH  | G.DUR    | [FILTER DISPLAY]
+        [ OUTPUT WAVEFORM SPAN 3 ]   | [FILTER DISPLAY]
+   */
+
+  private val bindingManager = BindingManager()
 
   buildGrid()
 
@@ -156,35 +164,69 @@ class RackController(viewModel: SynthViewModel, inspector: InspectorController)
     bindActiveTone()
   )
   bindingManager.listen(viewModel.fileLoadedProperty)(_ => bindActiveTone())
+  bindingManager.listen(viewModel.selectedCellIndex)(_ => updateSelection())
 
   for i <- 0 until viewModel.getTones.size do
     viewModel.getTones.get(i).addChangeListener(() => updateOutputWaveform())
 
+  /** Set playhead position (`0.0` to `1.0`) on output waveform. */
+  def setPlayheadPosition(position: Double): Unit =
+    outputWaveformCanvas.setPlayheadPosition(position)
+
+  /** Hide playhead on output waveform. */
+  def hidePlayhead(): Unit =
+    outputWaveformCanvas.hidePlayhead()
+
   private def buildGrid(): Unit =
     view.getChildren.clear()
     view.getColumnConstraints.clear()
+    view.getRowConstraints.clear()
 
-    val mode = viewModel.rackMode.get
-    val indices = mode match
-      case RackMode.Main   => Vector(0, 1, 2, 4, 5, 6, 8, 9, 10)
-      case RackMode.Filter => Vector(3, 7, 11)
-      case RackMode.Both   => (0 to 11).toVector
+    val colConstraint = new ColumnConstraints()
+    colConstraint.setPercentWidth(25)
+    for _ <- 0 until 4 do view.getColumnConstraints.add(colConstraint)
 
-    // Main/Filter use 3-col grid, Both uses 4-col
-    val cols = if mode == RackMode.Both then 4 else 3
+    val rowConstraint = new RowConstraints()
+    rowConstraint.setVgrow(Priority.ALWAYS)
+    for _ <- 0 until 4 do view.getRowConstraints.add(rowConstraint)
 
-    val constraint = new ColumnConstraints()
-    constraint.setPercentWidth(100.0 / cols)
-    for _ <- 0 until cols do view.getColumnConstraints.add(constraint)
+    // (Cell Def Index, Col, Row)
+    // 0:Pitch, 1:V.Rate, 2:V.Depth, 3:P/Z(Unused), 4:Vol, 5:T.Rate, 6:T.Depth,
+    // 7:Filt, 8:Out(Unused), 9:G.Sil, 10:G.Dur, 11:Bode(Unused)
 
-    indices.zipWithIndex.foreach { case (cellIdx, i) =>
-      val cell = cells(cellIdx)
-      val col = i % cols
-      val row = i / cols
+    addCell(0, 0, 0) // Pitch
+    addCell(1, 0, 1) // V.Rate
+    addCell(2, 0, 2) // V.Depth
 
-      view.add(cell, col, row)
-    }
+    addCell(4, 1, 0) // Volume
+    addCell(5, 1, 1) // T.Rate
+    addCell(6, 1, 2) // T.Depth
+
+    addCell(7, 2, 0) // Filter
+    addCell(9, 2, 1) // G.Sil
+    addCell(10, 2, 2) // G.Dur
+
+    val outputCell = cells(8)
+    view.add(outputCell, 0, 3, 3, 1) // Col 0, Row 3, Span 3x1
+
+    val filterCell = JagCellPane("FILTER DISPLAY")
+    filterCell.setFeatures(false, false)
+    val fWrapper = filterCell.getCanvas.getParent.asInstanceOf[Pane]
+    filterCell.getCanvas.setVisible(false)
+    fWrapper.getChildren.clear() // remove canvas
+    fWrapper.getChildren.add(filterDisplay)
+
+    poleZeroCanvas.widthProperty.bind(fWrapper.widthProperty)
+    poleZeroCanvas.heightProperty.bind(fWrapper.heightProperty.divide(2))
+    freqResponseCanvas.widthProperty.bind(fWrapper.widthProperty)
+    freqResponseCanvas.heightProperty.bind(fWrapper.heightProperty.divide(2))
+
+    view.add(filterCell, 3, 0, 1, 4)
+
     updateSelection()
+
+  private def addCell(defIdx: Int, col: Int, row: Int): Unit =
+    view.add(cells(defIdx), col, row)
 
   private def updateSelection(): Unit =
     val selectedIdx = viewModel.selectedCellIndex.get
@@ -200,14 +242,13 @@ class RackController(viewModel: SynthViewModel, inspector: InspectorController)
   private def selectCell(idx: Int): Unit =
     viewModel.selectedCellIndex.set(idx)
 
-  /** Returns envelope for cell index, or `None` for disabled cells. */
   private def bindInspector(idx: Int): Unit =
     val tone = viewModel.getActiveTone
     val cellDef = definitions(idx)
     cellDef.cellType match
       case CellType.Filter =>
         inspector.bindFilter(
-          tone.filterViewModel,
+          tone.polesZeros,
           cellDef.title,
           cellDef.desc
         )
@@ -223,10 +264,15 @@ class RackController(viewModel: SynthViewModel, inspector: InspectorController)
       cellDef.cellType match
         case CellType.Envelope(getter, _) =>
           cells(idx).setViewModel(getter(tone))
+          if cellDef.title.startsWith("G.") then
+            cells(idx).getCanvas match
+              case c: JagEnvelopeCanvas =>
+                c.setGraphColor(jagfx.utils.ColorUtils.Gating)
+              case null =>
         case _ => // do nothing
 
-    poleZeroCanvas.setViewModel(tone.filterViewModel)
-    freqResponseCanvas.setViewModel(tone.filterViewModel)
+    poleZeroCanvas.setViewModel(tone.polesZeros)
+    freqResponseCanvas.setViewModel(tone.polesZeros)
 
     updateOutputWaveform()
 
@@ -238,11 +284,3 @@ class RackController(viewModel: SynthViewModel, inspector: InspectorController)
         }
       case None =>
         outputWaveformCanvas.clearAudio()
-
-  /** Set playhead position (`0.0` to `1.0`) on output waveform. */
-  def setPlayheadPosition(position: Double): Unit =
-    outputWaveformCanvas.setPlayheadPosition(position)
-
-  /** Hide playhead on output waveform. */
-  def hidePlayhead(): Unit =
-    outputWaveformCanvas.hidePlayhead()
