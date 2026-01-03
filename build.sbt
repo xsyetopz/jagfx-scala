@@ -1,35 +1,29 @@
-import com.typesafe.sbt.packager.archetypes
+import com.typesafe.sbt.packager.archetypes.JavaAppPackaging
 import scala.sys.process._
 
-// --- Global / Build-wide Settings ---
 Global / onChangedBuildSource := ReloadOnSourceChanges
+Global / excludeLintKeys += Universal / libraryDependencies
 
 ThisBuild / organization := "jagfx"
-ThisBuild / version := "0.3.0-SNAPSHOT"
+ThisBuild / version := "0.2.0-SNAPSHOT"
 ThisBuild / scalaVersion := "3.7.4"
 
 ThisBuild / semanticdbEnabled := true
 
-// --- Dependency Versions ---
 val javaFxVersion = "23.0.1"
 val logbackVersion = "1.5.23"
 val scribeVersion = "3.17.0"
 val ikonliVersion = "12.4.0"
 val munitVersion = "1.0.4"
 
-// --- Project Definition ---
 lazy val root = project
   .in(file("."))
   .enablePlugins(JavaAppPackaging)
   .settings(
     name := "jagfx",
-
-    // App Packaging
     Compile / mainClass := Some("jagfx.Launcher"),
     executableScriptName := "jagfx",
     maintainer := "xsyetopz",
-
-    // Dependencies
     libraryDependencies ++= currentJavaFxDeps,
     Universal / libraryDependencies ++= allJavaFxDeps,
     libraryDependencies ++= Seq(
@@ -39,19 +33,30 @@ lazy val root = project
       "org.kordamp.ikonli" % "ikonli-materialdesign2-pack" % ikonliVersion,
       "org.scalameta" %% "munit" % munitVersion % Test
     ),
-
-    // Test & Run Configuration
     testFrameworks += new TestFramework("munit.Framework"),
-    run / fork := true,
-    run / connectInput := true,
-    outputStrategy := Some(StdoutOutput)
+    Compile / resourceGenerators += Def.task {
+      scss.value
+      Seq.empty[File]
+    }.taskValue
   )
 
-// --- Command Aliases ---
-addCommandAlias("cli", "runMain jagfx.JagFXCli")
-addCommandAlias("dist", "universal:packageBin")
+addCommandAlias(
+  "dev",
+  "; set run / fork := false; set run / connectInput := true; run"
+)
+addCommandAlias(
+  "prod",
+  "; set run / fork := true; set run / connectInput := false; run"
+)
+addCommandAlias(
+  "cli",
+  "; set run / fork := true; set run / connectInput := true; runMain jagfx.JagFXCli"
+)
+addCommandAlias(
+  "dist",
+  "; set run / fork := true; universal:packageBin"
+)
 
-// --- JavaFX Dependency Logic ---
 lazy val javaFxModules =
   Seq("base", "controls", "fxml", "graphics", "media", "swing", "web")
 
@@ -65,16 +70,17 @@ lazy val osClassifier = {
   else throw new Exception(s"Unknown OS: $osName")
 }
 
-lazy val currentJavaFxDeps = javaFxModules.map(m =>
-  "org.openjfx" % s"javafx-$m" % javaFxVersion classifier osClassifier
-)
+lazy val currentJavaFxDeps =
+  javaFxModules.map(m =>
+    "org.openjfx" % s"javafx-$m" % javaFxVersion classifier osClassifier
+  )
 
-lazy val allJavaFxDeps = for {
-  m <- javaFxModules
-  p <- Seq("win", "linux", "mac", "mac-aarch64")
-} yield "org.openjfx" % s"javafx-$m" % javaFxVersion classifier p
+lazy val allJavaFxDeps =
+  for {
+    m <- javaFxModules
+    p <- Seq("win", "linux", "mac", "mac-aarch64")
+  } yield "org.openjfx" % s"javafx-$m" % javaFxVersion classifier p
 
-// --- SCSS Compilation ---
 lazy val scss = taskKey[Unit]("Compile SCSS to CSS")
 scss := {
   def isToolAvailable(tool: String): Boolean =
@@ -92,7 +98,6 @@ scss := {
   val src = "src/main/scss/style.scss"
   val dst = "src/main/resources/jagfx/style.css"
   val exit = s"$compiler sass $src $dst --no-source-map".!
-  if (exit != 0) throw new Exception(s"SCSS compilation failed with code $exit")
+  if (exit != 0)
+    throw new Exception(s"SCSS compilation failed with code $exit")
 }
-
-Compile / compile := ((Compile / compile) dependsOn scss).value
