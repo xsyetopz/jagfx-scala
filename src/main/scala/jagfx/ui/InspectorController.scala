@@ -80,3 +80,7 @@ class InspectorController(viewModel: SynthViewModel):
     waveGrid.setSelected(formStr)
     startField.setValue(envelope.start.get)
     endField.setValue(envelope.end.get)
+
+  def hide(): Unit =
+    currentEnvelope = None
+    view.setVisible(false)

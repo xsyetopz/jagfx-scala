@@ -130,7 +130,9 @@ class RackController(viewModel: SynthViewModel, inspector: InspectorController):
       case _  => None
 
   private def bindInspector(idx: Int): Unit =
-    envelopeForCell(viewModel.getActiveTone, idx).foreach(inspector.bind)
+    envelopeForCell(viewModel.getActiveTone, idx) match
+      case Some(env) => inspector.bind(env)
+      case None      => inspector.hide()
 
   private def bindActiveTone(): Unit =
     val tone = viewModel.getActiveTone
