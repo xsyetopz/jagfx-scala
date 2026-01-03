@@ -110,7 +110,6 @@ object SynthReader:
 
     val pairCount0 = count >> 4
     val pairCount1 = count & 0xf
-    // IF see high pair counts, THEN likely not filter but start of next tone
     if pairCount0 > 3 || pairCount1 > 3 then
       buf.pos = startPos
       return None
@@ -125,7 +124,6 @@ object SynthReader:
       buf.pos = startPos
       return None
 
-    // count bits set in 'migrated' for active pairs
     var migratedPairsCount = 0
     for dir <- 0 until 2 do
       val pairs = if dir == 0 then pairCount0 else pairCount1
@@ -153,7 +151,6 @@ object SynthReader:
       if buf.remaining < envBytes then
         buf.pos = startPos
         return None
-
       buf.pos = savedPos // restore to start of pairs
 
     val maxPairs = math.max(pairCount0, pairCount1)
