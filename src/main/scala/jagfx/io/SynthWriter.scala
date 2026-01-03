@@ -56,43 +56,58 @@ object SynthWriter:
         val p0 = f.pairCounts(0)
         val p1 = f.pairCounts(1)
         buf.writeU8((p0 << 4) | p1)
-
         buf.writeU16BE(f.unity(0))
         buf.writeU16BE(f.unity(1))
 
-        var migrated = 0
-        for dir <- 0 until 2 do
-          val count = f.pairCounts(dir)
-          for p <- 0 until count do
-            val diffPhase = f.pairPhase(dir)(0)(p) != f.pairPhase(dir)(1)(p)
-            val diffMag =
-              f.pairMagnitude(dir)(0)(p) != f.pairMagnitude(dir)(1)(p)
-            if diffPhase || diffMag then migrated |= (1 << (dir * 4 + p))
-
-        if f.envelope.isDefined && migrated == 0 && f.unity(0) == f.unity(1)
-        then
-          if p0 > 0 then migrated |= 1
-          else if p1 > 0 then migrated |= (1 << 4)
-
+        val migrated = determineMigrationFlags(f, p0, p1)
         buf.writeU8(migrated)
 
-        for p <- 0 until p0 do
-          buf.writeU16BE(f.pairPhase(0)(0)(p))
-          buf.writeU16BE(f.pairMagnitude(0)(0)(p))
-        for p <- 0 until p1 do
-          buf.writeU16BE(f.pairPhase(1)(0)(p))
-          buf.writeU16BE(f.pairMagnitude(1)(0)(p))
-
-        for dir <- 0 until 2 do
-          val count = f.pairCounts(dir)
-          for p <- 0 until count do
-            if (migrated & (1 << (dir * 4 + p))) != 0 then
-              buf.writeU16BE(f.pairPhase(dir)(1)(p))
-              buf.writeU16BE(f.pairMagnitude(dir)(1)(p))
+        writeBasePairs(buf, f, p0, p1)
+        writeMigratedPairs(buf, f, migrated)
 
         f.envelope match
           case Some(env) => writeEnvelopeSegments(buf, env)
           case None      => // do nothing
+
+  private def determineMigrationFlags(f: Filter, p0: Int, p1: Int): Int =
+    var migrated = 0
+    for dir <- 0 until 2 do
+      val count = f.pairCounts(dir)
+      for p <- 0 until count do
+        val diffPhase = f.pairPhase(dir)(0)(p) != f.pairPhase(dir)(1)(p)
+        val diffMag = f.pairMagnitude(dir)(0)(p) != f.pairMagnitude(dir)(1)(p)
+        if diffPhase || diffMag then migrated |= (1 << (dir * 4 + p))
+
+    if f.envelope.isDefined && migrated == 0 && f.unity(0) == f.unity(1) then
+      if p0 > 0 then migrated |= 1
+      else if p1 > 0 then migrated |= (1 << 4)
+
+    migrated
+
+  private def writeBasePairs(
+      buf: BinaryBuffer,
+      f: Filter,
+      p0: Int,
+      p1: Int
+  ): Unit =
+    for p <- 0 until p0 do
+      buf.writeU16BE(f.pairPhase(0)(0)(p))
+      buf.writeU16BE(f.pairMagnitude(0)(0)(p))
+    for p <- 0 until p1 do
+      buf.writeU16BE(f.pairPhase(1)(0)(p))
+      buf.writeU16BE(f.pairMagnitude(1)(0)(p))
+
+  private def writeMigratedPairs(
+      buf: BinaryBuffer,
+      f: Filter,
+      migrated: Int
+  ): Unit =
+    for dir <- 0 until 2 do
+      val count = f.pairCounts(dir)
+      for p <- 0 until count do
+        if (migrated & (1 << (dir * 4 + p))) != 0 then
+          buf.writeU16BE(f.pairPhase(dir)(1)(p))
+          buf.writeU16BE(f.pairMagnitude(dir)(1)(p))
 
   private def writeEnvelopeSegments(buf: BinaryBuffer, env: Envelope): Unit =
     buf.writeU8(env.segments.length)

@@ -98,52 +98,75 @@ object SynthReader:
 
   private def readFilter(buf: BinaryBuffer): Option[Filter] =
     val count = buf.readU8()
+    if count == 0 then return None
+
     val pairCount0 = count >> 4
     val pairCount1 = count & 0xf
+    val unity0 = buf.readU16BE()
+    val unity1 = buf.readU16BE()
+    val migrated = buf.readU8()
 
-    if count == 0 then None // no filter
-    else
-      val unity0 = buf.readU16BE()
-      val unity1 = buf.readU16BE()
-      val migrated = buf.readU8()
+    val maxPairs = math.max(pairCount0, pairCount1)
+    val pairPhase = Array.ofDim[Int](2, 2, maxPairs)
+    val pairMagnitude = Array.ofDim[Int](2, 2, maxPairs)
 
-      val maxPairs = math.max(pairCount0, pairCount1)
-      val pairPhase = Array.ofDim[Int](2, 2, maxPairs)
-      val pairMagnitude = Array.ofDim[Int](2, 2, maxPairs)
+    readBasePairs(buf, pairCount0, pairCount1, pairPhase, pairMagnitude)
+    readMigratedPairs(
+      buf,
+      pairCount0,
+      pairCount1,
+      migrated,
+      pairPhase,
+      pairMagnitude
+    )
 
-      for p <- 0 until pairCount0 do
-        pairPhase(0)(0)(p) = buf.readU16BE()
-        pairMagnitude(0)(0)(p) = buf.readU16BE()
+    val envelope =
+      if migrated != 0 || unity1 != unity0 then
+        val env = readEnvelopeSegments(buf)
+        Some(env.copy(start = 65535, end = 65535))
+      else None
 
-      for p <- 0 until pairCount1 do
-        pairPhase(1)(0)(p) = buf.readU16BE()
-        pairMagnitude(1)(0)(p) = buf.readU16BE()
-
-      for dir <- 0 until 2 do
-        val pairs = if dir == 0 then pairCount0 else pairCount1
-        for p <- 0 until pairs do
-          if (migrated & (1 << (dir * 4) << p)) != 0 then
-            pairPhase(dir)(1)(p) = buf.readU16BE()
-            pairMagnitude(dir)(1)(p) = buf.readU16BE()
-          else
-            pairPhase(dir)(1)(p) = pairPhase(dir)(0)(p)
-            pairMagnitude(dir)(1)(p) = pairMagnitude(dir)(0)(p)
-
-      val envelope =
-        if migrated != 0 || unity1 != unity0 then
-          val env = readEnvelopeSegments(buf)
-          Some(env.copy(start = 65535, end = 65535))
-        else None
-
-      Some(
-        Filter(
-          Array(pairCount0, pairCount1),
-          Array(unity0, unity1),
-          pairPhase,
-          pairMagnitude,
-          envelope
-        )
+    Some(
+      Filter(
+        Array(pairCount0, pairCount1),
+        Array(unity0, unity1),
+        pairPhase,
+        pairMagnitude,
+        envelope
       )
+    )
+
+  private def readBasePairs(
+      buf: BinaryBuffer,
+      p0: Int,
+      p1: Int,
+      phs: Array[Array[Array[Int]]],
+      mag: Array[Array[Array[Int]]]
+  ): Unit =
+    for p <- 0 until p0 do
+      phs(0)(0)(p) = buf.readU16BE()
+      mag(0)(0)(p) = buf.readU16BE()
+    for p <- 0 until p1 do
+      phs(1)(0)(p) = buf.readU16BE()
+      mag(1)(0)(p) = buf.readU16BE()
+
+  private def readMigratedPairs(
+      buf: BinaryBuffer,
+      p0: Int,
+      p1: Int,
+      migrated: Int,
+      phs: Array[Array[Array[Int]]],
+      mag: Array[Array[Array[Int]]]
+  ): Unit =
+    for dir <- 0 until 2 do
+      val pairs = if dir == 0 then p0 else p1
+      for p <- 0 until pairs do
+        if (migrated & (1 << (dir * 4) << p)) != 0 then
+          phs(dir)(1)(p) = buf.readU16BE()
+          mag(dir)(1)(p) = buf.readU16BE()
+        else
+          phs(dir)(1)(p) = phs(dir)(0)(p)
+          mag(dir)(1)(p) = mag(dir)(0)(p)
 
   private def readEnvelopeSegments(buf: BinaryBuffer): Envelope =
     val length = buf.readU8()
