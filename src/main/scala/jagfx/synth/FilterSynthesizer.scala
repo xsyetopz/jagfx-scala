@@ -2,6 +2,7 @@ package jagfx.synth
 
 import jagfx.model._
 import jagfx.Constants
+import jagfx.utils.MathUtils._
 
 object FilterSynthesizer:
   def apply(buffer: Array[Int], filter: Filter, sampleCount: Int): Unit =
@@ -139,7 +140,7 @@ object FilterSynthesizer:
     val mag1 = filter.pairMagnitude(dir)(1)(pair)
     val interpolatedMag = mag0.toFloat + factor * (mag1 - mag0)
     val dbValue = interpolatedMag * 0.0015258789f
-    1.0f - Math.pow(10.0, -dbValue / 20.0).toFloat
+    1.0f - dBToLinear(-dbValue).toFloat
 
   private def calculatePhase(
       filter: Filter,
@@ -156,4 +157,4 @@ object FilterSynthesizer:
   private def getOctavePhase(pow2Value: Float): Float =
     // 32.7032 Hz ~ C1
     val frequencyHz = Math.pow(2.0, pow2Value) * 32.703197
-    (frequencyHz * 2.0 * Math.PI / Constants.SampleRate).toFloat
+    (frequencyHz * TwoPi / Constants.SampleRate).toFloat

@@ -2,6 +2,7 @@ package jagfx.synth
 
 import jagfx.model._
 import jagfx.Constants
+import jagfx.utils.MathUtils.clamp
 
 private val SemitoneBase: Double = 1.0057929410678534
 private val PhaseScale: Double = 32.768
@@ -298,5 +299,4 @@ object ToneSynthesizer:
   private def clipBuffer(buffer: Array[Int], sampleCount: Int): Unit =
     import Constants._
     for sample <- 0 until sampleCount do
-      if buffer(sample) < Int16.Min then buffer(sample) = Int16.Min
-      if buffer(sample) > Int16.Max then buffer(sample) = Int16.Max
+      buffer(sample) = clamp(buffer(sample), Int16.Min, Int16.Max)
