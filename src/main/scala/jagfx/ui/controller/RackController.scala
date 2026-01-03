@@ -6,6 +6,7 @@ import jagfx.ui.components._
 import jagfx.synth.SynthesisExecutor
 import javafx.beans.value.ChangeListener
 import jagfx.ui.BindingManager
+import jagfx.ui.controller.inspector.InspectorController
 
 class RackController(viewModel: SynthViewModel, inspector: InspectorController)
     extends IController[GridPane]:

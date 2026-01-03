@@ -1,33 +1,26 @@
-package jagfx.ui.controller
+package jagfx.ui.controller.header
 
-import javafx.embed.swing.SwingFXUtils
 import javafx.scene.layout._
 import javafx.scene.control._
-import javafx.stage.FileChooser
-import jagfx.ui.viewmodel.SynthViewModel
-import jagfx.ui.components._
-import jagfx.io._
-import jagfx.synth.TrackSynthesizer
-import java.io.File
-import javax.sound.sampled._
-import scala.util.Using
-import java.nio.file.Files
-import jagfx.Constants
-import jagfx.utils._
 import javafx.geometry._
 import javafx.scene.text._
-import javafx.animation.AnimationTimer
+import jagfx.ui.viewmodel.SynthViewModel
+import jagfx.ui.controller.IController
+import jagfx.ui.components._
+import jagfx.Constants
+import jagfx.utils._
 
+/** Header controller containing transport, file, and settings controls. */
 class HeaderController(viewModel: SynthViewModel) extends IController[GridPane]:
   import Constants._
-  private var currentFile: Option[File] = None
-  private var currentClip: Option[Clip] = None
-  private var playheadTimer: Option[AnimationTimer] = None
 
-  /** Callback for playhead position updates (`0.0` to `1.0`, or `-1` when
-    * stopped).
-    */
-  var onPlayheadUpdate: Double => Unit = _ => ()
+  private val audioPlayer = AudioPlayer(viewModel)
+  private val fileOps = FileOperations(viewModel, () => view.getScene.getWindow)
+
+  /** Callback for playhead position updates. */
+  def onPlayheadUpdate: Double => Unit = audioPlayer.onPlayheadUpdate
+  def onPlayheadUpdate_=(f: Double => Unit): Unit =
+    audioPlayer.onPlayheadUpdate = f
 
   protected val view = GridPane()
   view.getStyleClass.add("header")
@@ -72,8 +65,7 @@ class HeaderController(viewModel: SynthViewModel) extends IController[GridPane]:
 
   title.getChildren.addAll(txtJag, txtFx)
 
-  val separator =
-    new Separator(Orientation.VERTICAL)
+  val separator = new Separator(Orientation.VERTICAL)
   separator.setPadding(new Insets(0, 4, 0, 4))
 
   leftGroup.getChildren.addAll(title, separator, transportGroup)
@@ -88,7 +80,6 @@ class HeaderController(viewModel: SynthViewModel) extends IController[GridPane]:
   rightGroup.setPickOnBounds(false)
   rightGroup.setMaxWidth(Double.MaxValue)
 
-  // spacer to push 'fileGroup' to right
   val rightSpacer = new Region()
   HBox.setHgrow(rightSpacer, Priority.ALWAYS)
 
@@ -107,8 +98,8 @@ class HeaderController(viewModel: SynthViewModel) extends IController[GridPane]:
     btnLoop.setGraphic(IconUtils.icon("mdi2r-repeat"))
     btnLoop.setId("btn-loop")
 
-    btnPlay.setOnAction(_ => playAudio())
-    btnStop.setOnAction(_ => stopAudio())
+    btnPlay.setOnAction(_ => audioPlayer.play())
+    btnStop.setOnAction(_ => audioPlayer.stop())
     btnLoop.setOnAction(_ =>
       viewModel.loopEnabledProperty.set(!viewModel.isLoopEnabled)
     )
@@ -191,9 +182,9 @@ class HeaderController(viewModel: SynthViewModel) extends IController[GridPane]:
     val btnExport = JagButton()
     btnExport.setGraphic(IconUtils.icon("mdi2e-export-variant"))
 
-    btnOpen.setOnAction(_ => openFile())
-    btnSave.setOnAction(_ => saveFile())
-    btnExport.setOnAction(_ => saveAsOrExport())
+    btnOpen.setOnAction(_ => fileOps.open())
+    btnSave.setOnAction(_ => fileOps.save())
+    btnExport.setOnAction(_ => fileOps.saveAs())
 
     group.getChildren.addAll(btnOpen, btnSave, btnExport)
     group
@@ -214,122 +205,3 @@ class HeaderController(viewModel: SynthViewModel) extends IController[GridPane]:
     )
     btn16.setActive(UserPreferences.export16Bit.get)
     btn16
-
-  private def openFile(): Unit =
-    val chooser = new FileChooser()
-    chooser.getExtensionFilters.add(
-      new FileChooser.ExtensionFilter("Synth Files", "*.synth")
-    )
-    val file = chooser.showOpenDialog(view.getScene.getWindow)
-    if file != null then
-      SynthReader.readFromPath(file.toPath) match
-        case Right(synth) =>
-          viewModel.load(synth)
-          viewModel.setCurrentFilePath(file.getAbsolutePath)
-          currentFile = Some(file)
-        case Left(err) => scribe.error(s"Failed to load: ${err.message}")
-
-  private def saveFile(): Unit =
-    currentFile match
-      case Some(file) =>
-        try
-          val bytes = SynthWriter.write(viewModel.toModel())
-          Files.write(file.toPath, bytes)
-        catch
-          case e: Exception => scribe.error(s"Failed to save: ${e.getMessage}")
-      case None => saveAsOrExport(Some("*.synth"))
-
-  private def saveAsOrExport(filterObj: Option[String] = None): Unit =
-    val chooser = new FileChooser()
-    chooser.getExtensionFilters.addAll(
-      new FileChooser.ExtensionFilter("Synth Files", "*.synth"),
-      new FileChooser.ExtensionFilter("WAV Files", "*.wav")
-    )
-
-    if filterObj.isDefined then
-      chooser.setSelectedExtensionFilter(
-        chooser.getExtensionFilters
-          .filtered(f => f.getExtensions.contains(filterObj.get))
-          .get(0)
-      )
-
-    val file = chooser.showSaveDialog(view.getScene.getWindow)
-    if file != null then
-      val path = file.toPath
-      if path.toString.endsWith(".wav") then
-        val audio = TrackSynthesizer.synthesize(viewModel.toModel(), 1)
-        val is16Bit = UserPreferences.export16Bit.get
-        val bytes = if is16Bit then audio.toBytes16LE else audio.toBytesUnsigned
-        val bits = if is16Bit then 16 else 8
-        val wav = WavWriter.write(bytes, bits)
-        Files.write(path, wav)
-      else
-        val bytes = SynthWriter.write(viewModel.toModel())
-        Files.write(path, bytes)
-        currentFile = Some(file)
-
-  private def playAudio(): Unit =
-    stopAudio()
-
-    val toneFilter =
-      if viewModel.isTargetAll then -1 else viewModel.getActiveToneIndex
-    val loopCount =
-      if viewModel.isLoopEnabled then viewModel.loopCountProperty.get else 1
-    val audio =
-      TrackSynthesizer.synthesize(viewModel.toModel(), loopCount, toneFilter)
-
-    val clip = AudioSystem.getClip()
-    currentClip = Some(clip)
-
-    val format = new AudioFormat(Constants.SampleRate, 16, 1, true, true)
-    val bytes = audio.toBytes16BE
-    clip.open(format, bytes, 0, bytes.length)
-
-    if viewModel.isLoopEnabled && configureLoopPoints(clip) then
-      val count = viewModel.loopCountProperty.get
-      clip.loop(if count == 0 then Clip.LOOP_CONTINUOUSLY else count - 1)
-    else clip.start()
-
-    val totalFrames = clip.getFrameLength.toDouble
-    val timer = new AnimationTimer:
-      def handle(now: Long): Unit =
-        currentClip.foreach { c =>
-          if c.isRunning then
-            val pos = c.getFramePosition.toDouble / totalFrames
-            onPlayheadUpdate(pos)
-          else
-            onPlayheadUpdate(-1)
-            this.stop()
-        }
-    timer.start()
-    playheadTimer = Some(timer)
-
-  /** Configures loop points on clip.
-    *
-    * Returns `true` if loop points are valid.
-    */
-  private def configureLoopPoints(clip: Clip): Boolean =
-    val startMs = math.max(0, viewModel.loopStartProperty.get)
-    val endMs = math.max(startMs, viewModel.loopEndProperty.get)
-    if endMs <= startMs then return false
-
-    val startFrames = AudioUtils.msToSamples(startMs)
-    val endFrames = AudioUtils.msToSamples(endMs)
-    val len = clip.getFrameLength
-
-    val validEnd = math.min(endFrames, len - 1).toInt
-    val validStart = math.min(startFrames, validEnd).toInt
-    if validEnd > validStart then
-      clip.setLoopPoints(validStart, validEnd)
-      true
-    else false
-
-  private def stopAudio(): Unit =
-    playheadTimer.foreach(_.stop())
-    playheadTimer = None
-    onPlayheadUpdate(-1)
-    currentClip.foreach { clip =>
-      if clip.isRunning then clip.stop()
-      clip.close()
-    }
-    currentClip = None

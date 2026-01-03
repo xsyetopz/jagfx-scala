@@ -1,8 +1,12 @@
 package jagfx.ui.controller
 
+import javafx.application.Platform
 import javafx.scene.layout.BorderPane
 import jagfx.ui.viewmodel.SynthViewModel
 import jagfx.ui.components._
+import jagfx.ui.controller.header.HeaderController
+import jagfx.ui.controller.footer.FooterController
+import jagfx.ui.controller.inspector.InspectorController
 
 /** Root controller wiring all UI sections. */
 object MainController:
@@ -28,7 +32,7 @@ object MainController:
       if pos < 0 then rack.hidePlayhead()
       else rack.setPlayheadPosition(pos)
 
-    javafx.application.Platform.runLater(() =>
+    Platform.runLater(() =>
       val stage = root.getScene.getWindow.asInstanceOf[javafx.stage.Stage]
       viewModel.currentFilePathProperty.addListener((_, _, path) =>
         stage.setTitle(s"JagFX - $path")
