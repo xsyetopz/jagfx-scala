@@ -23,15 +23,13 @@ class FooterController(viewModel: SynthViewModel) extends IController[HBox]:
 
   view.getChildren.addAll(tonesPanel, harmonicsPanel, reverbPanel, modePanel)
 
-  private val leftRightSize = 70
-
   private def createTonesPanel(): VBox =
     val panel = VBox()
     panel.setId("tones-panel")
     panel.getStyleClass.add("panel")
-    panel.setMinWidth(leftRightSize)
-    panel.setPrefWidth(leftRightSize)
-    panel.setMaxWidth(leftRightSize)
+    panel.setMinWidth(70)
+    panel.setPrefWidth(70)
+    panel.setMaxWidth(70)
     HBox.setHgrow(panel, Priority.NEVER)
 
     val head = Label("TONES")
@@ -228,9 +226,9 @@ class FooterController(viewModel: SynthViewModel) extends IController[HBox]:
   private def createModePanel(): VBox =
     val panel = VBox()
     panel.getStyleClass.add("panel")
-    panel.setMinWidth(leftRightSize)
-    panel.setPrefWidth(leftRightSize)
-    panel.setMaxWidth(leftRightSize)
+    panel.setMinWidth(70)
+    panel.setPrefWidth(70)
+    panel.setMaxWidth(70)
     HBox.setHgrow(panel, Priority.NEVER)
 
     val head = Label("MODE")
