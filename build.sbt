@@ -17,24 +17,20 @@ val scribeVersion = "3.17.0"
 val ikonliVersion = "12.4.0"
 val munitVersion = "1.0.4"
 
-// --- Setting Keys ---
-val isFatJar =
-  settingKey[Boolean]("Flag to include all platform natives in build")
-
 // --- Project Definition ---
 lazy val root = project
   .in(file("."))
-  .enablePlugins(JavaAppPackaging, JlinkPlugin)
+  .enablePlugins(JavaAppPackaging)
   .settings(
     name := "jagfx",
-    isFatJar := false,
 
     // App Packaging
     Compile / mainClass := Some("jagfx.Launcher"),
     executableScriptName := "jagfx",
+    maintainer := "xsyetopz",
 
     // Dependencies
-    libraryDependencies ++= javaFxDependencies.value,
+    libraryDependencies ++= javaFxDependencies,
     libraryDependencies ++= Seq(
       "ch.qos.logback" % "logback-classic" % logbackVersion,
       "com.outr" %% "scribe-slf4j" % scribeVersion,
@@ -47,63 +43,23 @@ lazy val root = project
     testFrameworks += new TestFramework("munit.Framework"),
     run / fork := true,
     run / connectInput := true,
-    outputStrategy := Some(StdoutOutput),
-
-    // --- Assembly (Fat JAR) Settings ---
-    assembly / mainClass := Some("jagfx.Launcher"),
-    assembly / assemblyJarName := s"jagfx-all-platforms-${version.value}.jar",
-    assembly / assemblyMergeStrategy := {
-      case PathList("module-info.class")         => MergeStrategy.discard
-      case x if x.endsWith("module-info.class")  => MergeStrategy.discard
-      case x if x.contains("META-INF/versions/") => MergeStrategy.first
-      case x                                     =>
-        val oldStrategy = (assembly / assemblyMergeStrategy).value
-        oldStrategy(x)
-    },
-
-    // --- Jlink Settings ---
-    jlinkIgnoreMissingDependency := { _ => true },
-    jlinkOptions ++= Seq(
-      "--no-header-files",
-      "--no-man-pages",
-      "--strip-debug"
-    ),
-    jlinkModules ++= Seq("jdk.unsupported", "java.scripting", "java.xml")
+    outputStrategy := Some(StdoutOutput)
   )
 
 // --- Command Aliases ---
 addCommandAlias("cli", "runMain jagfx.JagFXCli")
-addCommandAlias(
-  "fatJar",
-  "; set root / isFatJar := true; assembly; set root / isFatJar := false"
-)
+addCommandAlias("dist", "universal:packageBin")
 
 // --- Helper Functions & Tasks ---
-lazy val javaFxDependencies = Def.setting {
+lazy val javaFxDependencies = {
   val modules =
     Seq("base", "controls", "fxml", "graphics", "media", "swing", "web")
+  val platforms = Seq("win", "linux", "mac", "mac-aarch64")
 
-  if (isFatJar.value) {
-    val platforms = Seq("win", "linux", "mac", "mac-aarch64")
-    for {
-      m <- modules
-      p <- platforms
-    } yield "org.openjfx" % s"javafx-$m" % javaFxVersion classifier p
-  } else {
-    val osName = System.getProperty("os.name").toLowerCase
-    val osArch = System.getProperty("os.arch").toLowerCase
-
-    val classifier =
-      if (osName.contains("linux")) "linux"
-      else if (osName.contains("mac")) {
-        if (osArch == "aarch64") "mac-aarch64" else "mac"
-      } else if (osName.contains("windows")) "win"
-      else throw new Exception(s"Unknown OS name: $osName")
-
-    modules.map(m =>
-      "org.openjfx" % s"javafx-$m" % javaFxVersion classifier classifier
-    )
-  }
+  for {
+    m <- modules
+    p <- platforms
+  } yield "org.openjfx" % s"javafx-$m" % javaFxVersion classifier p
 }
 
 lazy val scss = taskKey[Unit]("Compile SCSS to CSS")

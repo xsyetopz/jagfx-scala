@@ -57,27 +57,23 @@ sbt "cli input.synth output_looped.wav 4"
 
 ## Building for Distribution
 
-JagFX supports two primary distribution methods:
+You can package JagFX as standalone application that includes scripts for macOS, Linux, and Windows.
 
-### Option A: Cross-Platform "Fat JAR" (Recommended)
+1. **Create Universal Distribution:**
 
-Creates single `.jar` file containing **all** JavaFX natives (Windows, Linux, macOS Intel/Silicon). Useful for sharing single file that works anywhere JVM is installed.
+   ```bash
+   sbt dist
+   ```
 
-```bash
-sbt fatJar
-```
+   This creates ZIP file at:
+   `target/universal/jagfx-0.2.0-SNAPSHOT.zip`
 
-_Output: `target/scala-3.7.4/jagfx-all-platforms-0.2.0-SNAPSHOT.jar`_
+2. **Usage:**
+   Unzip file on any operating system.
+   - **Mac/Linux:** Run `bin/jagfx`
+   - **Windows:** Run `bin/jagfx.bat`
 
-### Option B: Native Application Bundle
-
-Creates stripped-down, fast-compiled distribution for **current OS only**. Includes bundled JVM runtime, so user DOES NOT need Java installed.
-
-```bash
-sbt jlinkBuildImage
-```
-
-_Output: `target/jlink/jagfx/`_
+   _Note: Distribution includes native JavaFX libraries for Windows, Linux, and macOS (Intel & Silicon), so it should be portable._
 
 ---
 
