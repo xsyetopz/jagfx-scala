@@ -60,10 +60,10 @@ class FilterInspector extends VBox:
   private val unityRow = HBox(4)
   unityRow.setAlignment(Pos.CENTER_LEFT)
   unityRow.getChildren.addAll(
-    Label("S"),
+    Label("S:"),
     unity0Field,
     new Region() { HBox.setHgrow(this, Priority.ALWAYS) },
-    Label("E"),
+    Label("E:"),
     unity1Field
   )
 
@@ -71,19 +71,16 @@ class FilterInspector extends VBox:
   private val polesLabel = Label("POLES")
   polesLabel.getStyleClass.addAll("label", "h-head")
 
-  private val polesInfoLabel = Label("0 active")
-  polesInfoLabel.getStyleClass.add("label")
-  polesInfoLabel.setStyle("-fx-text-fill: #888;")
+  private val polesEditor = FilterPolesEditor()
 
-  private val polesRow = HBox(4)
-  polesRow.setAlignment(Pos.CENTER_LEFT)
-  polesRow.getChildren.addAll(
+  getChildren.addAll(
+    pairsLabel,
+    pairsRow,
+    unityLabel,
+    unityRow,
     polesLabel,
-    new Region() { HBox.setHgrow(this, Priority.ALWAYS) },
-    polesInfoLabel
+    polesEditor
   )
-
-  getChildren.addAll(pairsLabel, pairsRow, unityLabel, unityRow, polesRow)
 
   /** Bind to filter view model. */
   def bind(filter: FilterViewModel): Unit =
@@ -92,9 +89,4 @@ class FilterInspector extends VBox:
     fbField.setValue(filter.pairCount1.get)
     unity0Field.setValue(filter.unity0.get)
     unity1Field.setValue(filter.unity1.get)
-    val totalPoles = filter.pairCount0.get + filter.pairCount1.get
-    polesInfoLabel.setText(s"$totalPoles active")
-
-  /** Get help text for this inspector mode. */
-  def getHelpText: String =
-    "FF/FB: Feedforward/feedback pairs\nUnity: Gain range (S to E)\nPoles shown on unit circle"
+    polesEditor.bind(filter)
