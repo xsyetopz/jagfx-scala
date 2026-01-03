@@ -248,7 +248,7 @@ class RackController(viewModel: SynthViewModel, inspector: InspectorController)
     cellDef.cellType match
       case CellType.Filter =>
         inspector.bindFilter(
-          tone.polesZeros,
+          tone.filterViewMode,
           cellDef.title,
           cellDef.desc
         )
@@ -271,8 +271,8 @@ class RackController(viewModel: SynthViewModel, inspector: InspectorController)
               case null =>
         case _ => // do nothing
 
-    poleZeroCanvas.setViewModel(tone.polesZeros)
-    freqResponseCanvas.setViewModel(tone.polesZeros)
+    poleZeroCanvas.setViewModel(tone.filterViewMode)
+    freqResponseCanvas.setViewModel(tone.filterViewMode)
 
     updateOutputWaveform()
 
