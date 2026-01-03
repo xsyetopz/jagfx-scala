@@ -6,7 +6,7 @@ import jagfx.Constants
 /** Orchestrates synthesis of multiple tones with loop expansion. */
 object TrackSynthesizer:
   /** Synthesizes complete `SynthFile` into audio samples. Mixes all active
-    * tones and expands loop region if `loopCount` > `1`.
+    * tones and expands loop region `if loopCount > 1.
     */
   def synthesize(
       file: SynthFile,
@@ -77,30 +77,12 @@ object TrackSynthesizer:
       0
     else loopCount
 
-  private def mixTones(
-      file: SynthFile,
-      sampleCount: Int,
-      totalSampleCount: Int
-  ): Array[Int] =
-    val buffer = Array.fill(totalSampleCount)(0)
-    for (idx, tone) <- file.activeTones do
-      scribe.debug(
-        s"Synthesizing tone $idx: ${tone.duration}ms @ ${tone.start}ms offset..."
-      )
-      val toneBuffer = ToneSynthesizer.synthesize(tone)
-      val startOffset = tone.start * Constants.SampleRate / 1000
-      for i <- 0 until toneBuffer.length do
-        val pos = i + startOffset
-        if pos >= 0 && pos < sampleCount then
-          buffer(pos) += toneBuffer.samples(i)
-    buffer
-
   private def mixTonesFiltered(
       tones: Vector[(Int, Tone)],
       sampleCount: Int,
       totalSampleCount: Int
   ): Array[Int] =
-    val buffer = Array.fill(totalSampleCount)(0)
+    val buffer = BufferPool.acquire(totalSampleCount)
     for (idx, tone) <- tones do
       scribe.debug(
         s"Synthesizing tone $idx: ${tone.duration}ms @ ${tone.start}ms offset..."
