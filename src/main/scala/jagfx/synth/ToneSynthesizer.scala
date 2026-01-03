@@ -265,20 +265,13 @@ object ToneSynthesizer:
         releaseEval.reset()
         attackEval.reset()
         var counter = 0
-        var muted = true
         for sample <- 0 until sampleCount do
           val releaseValue = releaseEval.evaluate(sampleCount)
           val attackValue = attackEval.evaluate(sampleCount)
           val threshold =
-            if muted then
-              release.start + ((release.end - release.start) * releaseValue >> 8)
-            else
-              release.start + ((release.end - release.start) * attackValue >> 8)
+            release.start + ((release.end - release.start) * attackValue >> 8)
           counter += 256
-          if counter >= threshold then
-            counter = 0
-            muted = !muted
-          if muted then buffer(sample) = 0
+          if counter >= threshold then counter = 0
       case _ => ()
 
   private def applyReverb(
