@@ -17,9 +17,7 @@ object TrackSynthesizer:
       if toneFilter < 0 then file.activeTones
       else file.activeTones.filter(_._1 == toneFilter)
     val maxDuration = calculateMaxDurationFiltered(tonesToMix)
-    if maxDuration == 0 then
-      scribe.warn("No active tone(s) to synthesize")
-      return AudioBuffer.empty(0)
+    if maxDuration == 0 then return AudioBuffer.empty(0)
 
     val sampleCount = maxDuration * Constants.SampleRate / 1000
     val loopStart = file.loop.begin * Constants.SampleRate / 1000
@@ -29,10 +27,6 @@ object TrackSynthesizer:
       validateLoopRegion(file, sampleCount, loopStart, loopStop, loopCount)
     val totalSampleCount =
       sampleCount + (loopStop - loopStart) * math.max(0, effectiveLoopCount - 1)
-
-    scribe.debug(
-      s"Mixing ${tonesToMix.size} tone(s) into $totalSampleCount sample(s)..."
-    )
 
     val buffer = mixTonesFiltered(tonesToMix, sampleCount, totalSampleCount)
     if effectiveLoopCount > 1 then
@@ -84,9 +78,6 @@ object TrackSynthesizer:
   ): Array[Int] =
     val buffer = BufferPool.acquire(totalSampleCount)
     for (idx, tone) <- tones do
-      scribe.debug(
-        s"Synthesizing tone $idx: ${tone.duration}ms @ ${tone.start}ms offset..."
-      )
       val toneBuffer = ToneSynthesizer.synthesize(tone)
       val startOffset = tone.start * Constants.SampleRate / 1000
       for i <- 0 until toneBuffer.length do
@@ -102,7 +93,6 @@ object TrackSynthesizer:
       loopStop: Int,
       loopCount: Int
   ): Unit =
-    scribe.debug(s"Applying loop expansion: $loopCount iteration(s)...")
     val totalSampleCount = buffer.length
     val endOffset = totalSampleCount - sampleCount
     for sample <- (sampleCount - 1) to loopStop by -1 do

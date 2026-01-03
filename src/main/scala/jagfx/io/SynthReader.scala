@@ -43,7 +43,6 @@ object SynthReader:
   def readFromPath(path: Path): Either[ParseError, SynthFile] =
     try
       val data = Files.readAllBytes(path)
-      scribe.debug(s"Read ${data.length} byte(s) from $path")
       read(data)
     catch
       case e: Exception =>

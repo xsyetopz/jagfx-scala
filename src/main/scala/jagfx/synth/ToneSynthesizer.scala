@@ -22,13 +22,7 @@ object ToneSynthesizer:
     */
   def synthesize(tone: Tone): AudioBuffer =
     val sampleCount = tone.duration * SampleRate / 1000
-    if sampleCount <= 0 || tone.duration < 10 then
-      scribe.debug(s"Skipping short tone: ${tone.duration}ms...")
-      return AudioBuffer.empty(0)
-
-    scribe.debug(
-      s"Rendering ${tone.harmonics.length} harmonic(s) over $sampleCount sample(s)..."
-    )
+    if sampleCount <= 0 || tone.duration < 10 then return AudioBuffer.empty(0)
 
     val samplesPerStep = sampleCount.toDouble / tone.duration.toDouble
     val buffer = BufferPool.acquire(sampleCount)
@@ -36,17 +30,10 @@ object ToneSynthesizer:
     val state = initSynthState(tone, samplesPerStep, sampleCount)
     renderSamples(buffer, tone, state, sampleCount)
 
-    if tone.gateSilence.isDefined then scribe.debug("Applying gate effect...")
     applyGating(buffer, tone, sampleCount)
-
-    if tone.reverbDelay > 0 && tone.reverbVolume > 0 then
-      scribe.debug(
-        s"Applying reverb: delay=${tone.reverbDelay}ms, volume=${tone.reverbVolume}%..."
-      )
     applyReverb(buffer, tone, samplesPerStep, sampleCount)
 
     tone.filter.foreach { f =>
-      scribe.debug("Applying IIR filter...")
       FilterSynthesizer.apply(buffer, f, sampleCount)
     }
 

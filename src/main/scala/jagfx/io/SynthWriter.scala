@@ -12,14 +12,12 @@ object SynthWriter:
     writeTones(buf, file.tones)
     buf.writeU16BE(file.loop.begin)
     buf.writeU16BE(file.loop.end)
-    scribe.debug(s"Serialized ${buf.pos} byte(s)")
     buf.data.take(buf.pos)
 
   /** Writes `SynthFile` to filesystem path. */
   def writeToPath(file: SynthFile, path: Path): Unit =
     val bytes = write(file)
     Files.write(path, bytes)
-    scribe.info(s"Wrote ${bytes.length} byte(s) to $path")
 
   private def writeTones(buf: BinaryBuffer, tones: Vector[Option[Tone]]): Unit =
     for tone <- tones.take(Constants.MaxTones) do
