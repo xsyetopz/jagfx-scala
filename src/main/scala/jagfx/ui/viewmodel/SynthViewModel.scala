@@ -85,14 +85,13 @@ class SynthViewModel:
       val tone = file.tones.lift(i).flatten
       tones.get(i).load(tone)
 
-    // total duration from active tones
     val maxDur = (0 until MaxTones)
       .flatMap(i => file.tones.lift(i).flatten)
       .map(t => t.duration + t.start)
       .maxOption
       .getOrElse(0)
     totalDuration.set(maxDur)
-
+    activeToneIndex.set(0) // go `Tone 1` whenever file loaded
     fileLoaded.set(System.currentTimeMillis())
 
   def toModel(): SynthFile =
