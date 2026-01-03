@@ -262,7 +262,8 @@ object SynthReader:
       (None, None)
 
   private def readHarmonics(buf: BinaryBuffer): Vector[Harmonic] =
-    var harmonics = Vector.empty[Harmonic]
+    val builder = Vector.newBuilder[Harmonic]
+    builder.sizeHint(MaxHarmonics)
     var continue = true
     var count = 0
     while continue && count < MaxHarmonics do
@@ -271,6 +272,6 @@ object SynthReader:
       else
         val semitone = buf.readSmart()
         val delay = buf.readSmartUnsigned()
-        harmonics = harmonics :+ Harmonic(volume, semitone, delay)
+        builder += Harmonic(volume, semitone, delay)
         count += 1
-    harmonics
+    builder.result()
