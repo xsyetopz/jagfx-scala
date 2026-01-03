@@ -3,7 +3,7 @@ package jagfx.ui.controller
 import javafx.scene.layout._
 import jagfx.ui.viewmodel._
 import jagfx.ui.components._
-import jagfx.synth.ToneSynthesizer
+import jagfx.synth.SynthesisExecutor
 import javafx.beans.value.ChangeListener
 
 class RackController(viewModel: SynthViewModel, inspector: InspectorController)
@@ -221,15 +221,13 @@ class RackController(viewModel: SynthViewModel, inspector: InspectorController)
     updateOutputWaveform()
 
   private def updateOutputWaveform(): Unit =
-    javafx.application.Platform.runLater(() =>
-      val toneVm = viewModel.getActiveTone
-      toneVm.toModel() match
-        case Some(tone) =>
-          val audio = ToneSynthesizer.synthesize(tone)
+    viewModel.getActiveTone.toModel() match
+      case Some(tone) =>
+        SynthesisExecutor.synthesizeTone(tone) { audio =>
           outputWaveformCanvas.setAudioBuffer(audio)
-        case None =>
-          outputWaveformCanvas.clearAudio()
-    )
+        }
+      case None =>
+        outputWaveformCanvas.clearAudio()
 
   /** Set playhead position (`0.0` to `1.0`) on output waveform. */
   def setPlayheadPosition(position: Double): Unit =
