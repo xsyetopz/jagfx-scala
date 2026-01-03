@@ -17,6 +17,7 @@ class SynthViewModel:
   private val loopEnd = new SimpleIntegerProperty(0)
   private val loopCount = new SimpleIntegerProperty(0)
   private val loopEnabled = new SimpleBooleanProperty(false)
+  private val fileLoaded = new SimpleObjectProperty[java.lang.Long](0L)
 
   val rackMode = new SimpleObjectProperty[RackMode](RackMode.Main)
   val selectedCellIndex = new SimpleIntegerProperty(-1)
@@ -73,8 +74,6 @@ class SynthViewModel:
   private val totalDuration = new SimpleIntegerProperty(0)
 
   def totalDurationProperty: IntegerProperty = totalDuration
-
-  private val fileLoaded = new SimpleObjectProperty[java.lang.Long](0L)
   def fileLoadedProperty: ObjectProperty[java.lang.Long] = fileLoaded
 
   def load(file: SynthFile): Unit =
