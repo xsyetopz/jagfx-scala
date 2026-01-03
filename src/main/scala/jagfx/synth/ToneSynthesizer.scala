@@ -157,8 +157,7 @@ object ToneSynthesizer:
         volumes(harmonic) = (h.volume << 14) / 100
         semitones(harmonic) =
           ((tone.pitchEnvelope.end - tone.pitchEnvelope.start) * PhaseScale *
-            math.pow(
-              LookupTables.SemitoneBase,
+            LookupTables.getSemitoneMultiplier(
               h.semitone
             ) / samplesPerStep).toInt
         starts(harmonic) =
