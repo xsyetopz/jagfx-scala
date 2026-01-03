@@ -22,4 +22,12 @@ object MainController:
     root.setCenter(rack.getView)
     root.setBottom(footer.getView)
 
+    javafx.application.Platform.runLater(() =>
+      val stage = root.getScene.getWindow.asInstanceOf[javafx.stage.Stage]
+      viewModel.currentFilePathProperty.addListener((_, _, path) =>
+        stage.setTitle(s"JagFX - $path")
+      )
+      stage.setTitle(s"JagFX - ${viewModel.currentFilePathProperty.get}")
+    )
+
     root
