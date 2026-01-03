@@ -1,4 +1,12 @@
-# JagFX Additive Synthesizer
+<h1 align="center">Jagex Additive Synthesizer</h1>
+
+<p align="center">
+  <img
+    src="assets/370_cow_death.png"
+    alt="Cow Death"
+    onerror="this.onerror=null;this.src='https://raw.githubusercontent.com/xsyetopz/jagfx-scala/main/assets/370_cow_death.png';"
+  >
+</p>
 
 Clear and powerful tool for working with Jagex Audio Synthesis files. Allows you to view, play, and convert `.synth` files to `.wav`.
 
