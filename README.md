@@ -1,4 +1,4 @@
-# JagFX - Jagex Additive Synthesizer
+# JagFX - Jagex Synth Editor
 
 <p align="left">
   <img
@@ -8,95 +8,67 @@
   >
 </p>
 
-Powerful tool for visualizing, playing, and converting Jagex Audio Synthesis (`.synth`) files.
+Cross-platform editor for Jagex Audio Synthesis (`.synth`) files. Create, edit, visualize, and export RuneScape-era sound effects.
 
 ## Features
 
-- **Audio Engine**: High-performance additive synthesis with FM modulation, gating, and custom IIR filters.
-- **Visualizations**: Real-time waveform rendering, pole-zero plots, and envelope editors.
-- **Cross-Platform**: Runs on macOS, Windows, and Linux.
-- **Batch Processing**: CLI tools for rapid `.synth` to `.wav` conversion.
+| Category | Features |
+|----------|----------|
+| **Envelopes** | Pitch, Volume, Vibrato (Rate/Depth), Tremolo (Rate/Depth), Gate (Silence/Duration) |
+| **Harmonics** | 10 additive partials with volume, semitone offset, and phase delay |
+| **Filter** | IIR filter with pole/zero editor, frequency response visualisation |
+| **Modulation** | FM (vibrato) and AM (tremolo) with envelope-controlled rate/depth |
+| **Reverb** | Configurable delay and mix level per tone |
+| **Export** | Save as `.synth` or export to `.wav` (8-bit or 16-bit) |
 
----
-
-## Prerequisites
-
-- **JDK 21** or higher.
-- **sbt 1.11+** (Scala Build Tool).
-- **Node.js** (or `bun`) for compiling SCSS styles.
-
----
-
-## Getting Started
-
-### 1. Build & Run
+## Quick Start
 
 ```bash
-# compile and run GUI
-sbt compile && sbt run
+# Run GUI
+sbt dev
 
-# run unit tests
+# Run tests
 sbt test
 ```
 
-### 2. CLI Usage
+## CLI Usage
 
 Batch convert files without opening GUI:
 
 ```bash
-# sbt "cli <input.synth> <output.wav> [loopCount]"
-
-# convert single file
+# Convert single file
 sbt "cli input.synth output.wav"
 
-# convert and loop 4 times
+# Convert with loop count
 sbt "cli input.synth output_looped.wav 4"
 ```
 
----
-
 ## Building for Distribution
 
-You can package JagFX as standalone application that includes scripts for macOS, Linux, and Windows.
+```bash
+sbt dist
+```
 
-1. **Create Universal Distribution:**
-
-   ```bash
-   sbt dist
-   ```
-
-   This creates ZIP file at:
-   `target/universal/jagfx-0.2.0-SNAPSHOT.zip`
-
-2. **Usage:**
-   Unzip file on any operating system.
-   - **Mac/Linux:** Run `bin/jagfx`
-   - **Windows:** Run `bin/jagfx.bat`
-
-   _Note: Distribution includes native JavaFX libraries for Windows, Linux, and macOS (Intel & Silicon), so it should be portable._
-
----
+Creates `target/universal/jagfx-1.0.0.zip` with platform launchers for macOS, Linux, and Windows.
 
 ## Project Structure
 
 ```text
-src/main/
-├── scala/jagfx/
-│   ├── io/                 # Binary .synth reader/writer
-│   ├── model/              # Pure data models (Tones, Envelopes)
-│   ├── synth/              # Core DSP engine (Oscillators, Filters)
-│   ├── ui/                 # JavaFX views & controllers
-│   ├── utils/              # Utility functions
-│   ├── JagFX.scala         # GUI Entry point
-│   └── JagFXCli.scala      # CLI Entry point
-└── scss/                   # UI Styling
+src/main/scala/jagfx/
+├── io/              # Binary .synth reader/writer
+├── model/           # Data models (Tone, Envelope, Filter)
+├── synth/           # DSP engine (oscillators, filters, synthesis)
+├── ui/              # JavaFX controllers and components
+├── utils/           # Utilities (icons, colors, preferences)
+├── JagFX.scala      # GUI entry point
+└── JagFXCli.scala   # CLI entry point
 ```
 
-## Community Examples
+## Requirements
 
-### `ice_cast.synth` and `ice_barrage_impact.synth`
-
-<https://github.com/user-attachments/assets/fff9dba4-0acb-4ca9-949e-b593fdbbc0fc>
+- JDK 21+
+- sbt 1.11+
+- Node.js (for SCSS compilation)
 
 ## License
 
