@@ -53,17 +53,12 @@ jobs:
           name: jagfx-fat-jar
           path: target/scala-*/*.jar
 
-      - name: Build Native Installer
+      - name: Build Distribution
         shell: bash
-        run: sbt jpackage:packageBin
+        run: sbt "Universal/packageBin"
 
-      - name: Upload Installer
+      - name: Upload Distribution
         uses: actions/upload-artifact@v4
         with:
-          name: jagfx-installer-${{ matrix.os }}
-          path: |
-            target/universal/package/linux/*.deb
-            target/universal/package/linux/*.rpm
-            target/universal/package/windows/*.msi
-            target/universal/package/windows/*.exe
-            target/universal/package/mac/*.dmg
+          name: jagfx-${{ matrix.os }}
+          path: target/universal/*.zip
