@@ -1,5 +1,7 @@
 package jagfx.utils
 
+import jagfx.Constants.Int16
+
 /** Common mathematical constants and utilities. */
 object MathUtils:
   /** 2π */
@@ -41,3 +43,41 @@ object MathUtils:
   /** Convert linear gain to decibels. */
   inline def linearToDb(linear: Double): Double =
     20.0 * math.log10(math.max(0.00001, linear))
+
+  /** Unit types for value conversion. */
+  enum UnitType:
+    /** `0-65535` (16-bit unsigned) */
+    case Raw16
+
+    /** `0.0-100.0%` */
+    case Percent
+
+    /** `0.0-1.0` */
+    case Normalized
+
+    /** Semitones * `10` (`1200` = `1` octave) */
+    case Decicents
+
+  /** Convert value between unit types. */
+  def convert(value: Double, from: UnitType, to: UnitType): Double =
+    if from == to then value
+    else
+      val normalized = from match
+        case UnitType.Raw16      => value / Int16.Range.toDouble
+        case UnitType.Percent    => value / 100.0
+        case UnitType.Normalized => value
+        case UnitType.Decicents  => value / 1200.0
+      to match
+        case UnitType.Raw16      => normalized * Int16.Range.toDouble
+        case UnitType.Percent    => normalized * 100.0
+        case UnitType.Normalized => normalized
+        case UnitType.Decicents  => normalized * 1200.0
+
+  /** Format value with unit suffix. */
+  def format(value: Double, unit: UnitType, decimals: Int = 1): String =
+    val fmt = s"%.${decimals}f"
+    unit match
+      case UnitType.Raw16      => value.toInt.toString
+      case UnitType.Percent    => s"${fmt.format(value)}%"
+      case UnitType.Normalized => fmt.format(value)
+      case UnitType.Decicents  => s"${fmt.format(value / 10.0)} st"
