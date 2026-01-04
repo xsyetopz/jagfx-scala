@@ -1,7 +1,7 @@
 package jagfx.utils
 
 import java.util.prefs.Preferences
-import javafx.beans.property.{BooleanProperty, SimpleBooleanProperty}
+import javafx.beans.property._
 
 private val KeyExport16Bit = "export_16_bit"
 
