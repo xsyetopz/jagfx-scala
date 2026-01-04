@@ -1,13 +1,13 @@
 # Jagex .synth File Format Specification
 
-Reverse-engineered from RuneScape cache files (317 client reference).
+Reverse-engineered from RuneScape cache files (Lost City OS1 reference).
 
 ## Overview
 
-Binary format for synthesized sound effects. Contains up to **10 instrument voices ("tones")** with envelope-controlled pitch, amplitude, modulation, and IIR filtering.
+Binary format for synthesized sound effects. Contains up to **`10` instrument voices ("tones")** with envelope-controlled pitch, amplitude, modulation, and IIR filtering.
 
 **Byte Order**: Big Endian
-**Sample Rate**: 22,050 Hz (fixed)
+**Sample Rate**: `22,050` Hz (fixed)
 
 ---
 
@@ -18,8 +18,8 @@ Binary format for synthesized sound effects. Contains up to **10 instrument voic
 | `u8` | 1 | Unsigned 8-bit |
 | `u16` | 2 | Unsigned 16-bit BE |
 | `s32` | 4 | Signed 32-bit BE |
-| `smart` | 1-2 | Variable unsigned: `<128` = byte; else `((b-128)<<8) + next` |
-| `ssmart` | 1-2 | Variable signed: `<128` = byte-64; else `((b<<8)+next) - 49152` |
+| `smart` | 1-2 | Variable signed: `<128` encodes as `val - 64`; else `((b<<8)+next) - 49152` |
+| `usmart`| 1-2 | Variable unsigned: `<128` encodes as `val`; else `((b-128)<<8) + next` |
 
 ---
 
@@ -27,17 +27,26 @@ Binary format for synthesized sound effects. Contains up to **10 instrument voic
 
 ```
 ┌──────────────────────────┐
-│  Tone Slots [0..9]       │  10 slots, each starts with presence byte
+│  Tone Slot [0..9]        │
 ├──────────────────────────┤
-│  Loop Begin (u16)        │  ms
-│  Loop End (u16)          │  ms
+│  Loop Begin (u16)        │  (Optional: if bytes remain)
+│  Loop End (u16)          │
 └──────────────────────────┘
 ```
 
 ### Tone Slot Detection
 
-- `0x00`: Empty (1 byte consumed)
-- `!= 0x00`: Tone follows (byte NOT consumed—rewind)
+Maximum 10 slots. Each detected via **Header Marker**:
+
+- `0x00`: **Empty Slot**. (Consumes `1` byte. Parser advances to next slot).
+- `!= 0x00`: **Tone Present**. (Byte NOT consumed during detection).
+  - Marker equals **FormID** of Pitch Envelope.
+
+### Truncation Handling
+
+- **Tones**: If EOF reached, remaining slots assumed empty.
+- **Filter**: If EOF reached during Filter read, Filter discarded (fallback to raw synth).
+- **Loop**: If EOF reached before Loop Params, loop disabled (`0,0`).
 
 ---
 
@@ -50,136 +59,120 @@ Binary format for synthesized sound effects. Contains up to **10 instrument voic
 | Vibrato | `OptPair` | Rate + Depth |
 | Tremolo | `OptPair` | Rate + Depth |
 | Gate | `OptPair` | Silence + Duration |
-| Harmonics | `Harmonic[]` | Max 10, terminated by vol=0 |
-| Reverb Delay | `smart` | ms |
-| Reverb Volume | `smart` | 0-100 |
-| Duration | `u16` | ms |
-| Start Offset | `u16` | ms |
+| Harmonics | `Harmonic[]` | Max `10`, null-terminated |
+| Reverb Delay | `usmart` | |
+| Reverb Volume | `usmart` | |
+| Duration | `u16` | Total duration (ms) |
+| Start Offset | `u16` | Start delay (ms) |
 | Filter | `Filter` | Optional IIR |
 
-**OptPair**: Peek byte. `0x00`=absent (consume 1), else two Envelopes.
+**OptPair**: Peek byte. `0x00`=absent (consume `1`), else read two`Envelope`s.
 
 ---
 
-## Envelope
+## Envelope Structures
 
-| Field | Type |
-|-------|------|
-| Form | `u8` | 0=Off, 1=Square, 2=Sine, 3=Saw, 4=Noise |
-| Start | `s32` |
-| End | `s32` |
-| Segment Count | `u8` |
-| Segments | `Segment[]` |
+### 1. Full Envelope (Tone Params)
 
-### Segment
+| Field | Type | Description |
+|-------|------|-------------|
+| Form | `u8` | `0`=Off, `1`=Square, `2`=Sine, `3`=Saw, `4`=Noise |
+| Start | `s32` | Start Value |
+| End | `s32` | End Value |
+| Count | `u8` | Segment count |
+| Segments | `Segment[]` | Linear interpolation segments |
 
-**Order**: Duration BEFORE Peak (317 format).
+### 2. Segment-Only Envelope (Filter)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| Count | `u8` | Segment count |
+| Segments | `Segment[]` | Linear interpolation segments |
+
+### Segment Definition
+
+**Order**: Duration BEFORE Peak.
 
 | Field | Type | Range |
 |-------|------|-------|
-| Duration | `u16` | Absolute phase (0-65535) |
-| Peak | `u16` | Interpolation (0=Start, 65535=End) |
-
-### Envelope Evaluation (Runtime)
-
-1. `amplitude = segments[0].peak` (initial)
-2. `segmentIdx = 0`, `step = 0`
-3. Each sample:
-   - `step++`
-   - If `step >= targetTime`: advance `segmentIdx++`, recalculate `delta`
-   - `amplitude += delta`
-4. Return: `start + (amplitude * (end - start)) >> 15`
+| Duration | `u16` | Time delta |
+| Peak | `u16` | Value at end of segment |
 
 ---
 
-## Filter
+## Filter Definition
 
-IIR filter with up to 4 pole pairs per direction.
+IIR filter. Max 4 pole pairs per direction.
 
 | Field | Type | Notes |
 |-------|------|-------|
-| Count | `u8` | `pairCount0 = count>>4`, `pairCount1 = count&0xF` |
-| Unity | `u16[2]` | Gain (start, end) |
-| Mask | `u8` | Dynamic pole flags |
-| Base Poles | `u16[2]` * pairs | Phase, Magnitude per pair |
-| Target Poles | conditional | If masked, read target values |
-| Envelope | `Envelope` | If mask≠0 or unity differs |
-
-**If count=0**: No filter present → `None`.
-
-### Filter Application (Runtime)
-
-Coefficients updated every **128 samples**:
-
-1. Interpolate unity gain via envelope
-2. Compute feedforward/feedback coefficients
-3. Apply IIR: `y[n] = b0*x[n] + b1*x[n-1] + ... - a1*y[n-1] - ...`
+| Packed Pairs | `u8` | `Count0 = byte >> 4`, `Count1 = byte & 0xF` |
+| **IF Packed == 0** | | **Filter Empty (Return)** |
+| Unity | `u16[2]` | Gain (Forward `0`, Forward `1`) |
+| Mask | `u8` | Modulation Flags |
+| Coeffs 0 | `(u16,u16)[]` | `Count0` pairs of (Freq, Mag) for Channel `0` |
+| Coeffs 1 | `(u16,u16)[]` | `Count0` pairs of (Freq, Mag) for Channel `1`.<br>If`(Mask & (1<<(Ch*4)<<p))` set, read new values.<br>Else copy `Ch0` values. |
+| Envelope | `SegEnv` | **Read ONLY if** `Mask != 0 \|\| Unity1 != Unity0`. Else None. |
 
 ---
 
 ## Harmonics
 
-Loop until `volume = 0`:
+Read until `Volume (usmart) == 0` or Max `10` reached.
 
 | Field | Type | Notes |
 |-------|------|-------|
-| Volume | `smart` | 0=end, 1-100% |
-| Semitone | `ssmart` | Decicents (10 = 1 semitone) |
-| Delay | `smart` | Phase offset (ms) |
-
----
-
-## Gating (Runtime)
-
-Controls amplitude on/off switching using `gateSilence` and `gateDuration` envelopes:
-
-```text
-muted = true
-for each sample:
-  silenceVal = gateSilence.evaluate()
-  durationVal = gateDuration.evaluate()
-
-  if muted && silenceVal < durationVal:
-    muted = false
-  elif !muted && silenceVal >= durationVal:
-    muted = true
-
-  if muted: sample = 0
-```
+| Volume | `usmart` | If `0`, stop reading. |
+| Semitone | `smart` | Signed relative pitch |
+| Delay | `usmart` | Phase offset |
 
 ---
 
 ## Synthesis Flow
 
 ```mermaid
-graph TD
-    A[Parse Tone] --> B[Initialize Envelopes]
-    B --> C{For each sample}
-    C --> D[Evaluate Pitch → frequency]
-    D --> E[Evaluate Volume → amplitude]
-    E --> F[Apply Modulation]
-    F --> G[Generate Waveform]
-    G --> H[Apply Gating]
-    H --> I[Apply Filter every 128 samples]
-    I --> J[Mix Harmonics]
-    J --> K[Apply Reverb]
-    K --> C
+graph LR
+    subgraph Data [Data Model]
+      EnvP[Pitch Env]
+      EnvV[Vol Env]
+      FiltDef[Filter Def]
+    end
+
+    subgraph AudioLoop [Per Sample Processing]
+
+      direction LR
+
+      EnvP -->|Evaluate| Pitch[Pitch]
+      EnvV -->|Evaluate| Amp[Amplitude]
+
+      Pitch --> Osc[Oscillator]
+      Amp --> Osc
+
+      Osc --> Gating
+      Gating --> Filter[IIR Filter]
+
+      Filter --> Mix[Mix Harmonics]
+      Mix --> Reverb
+
+      Reverb --> Out[Sample Output]
+
+      subgraph RateControl [Modulation]
+         Vib[Vibrato] -.-> Pitch
+         Trem[Tremolo] -.-> Amp
+      end
+    end
+
+    FiltDef -.->|Update Coeffs (128 samples)| Filter
 ```
 
 ---
 
-## Units
+## Units & Evaluation
 
-| Parameter | Unit | Notes |
-|-----------|------|-------|
-| Frequency | JPU | Hz ≈ value * 22.05 |
-| Semitone | Decicents | 120 = 1 octave |
-| Duration | ms | Direct |
-| Peak | 0-65535 | Normalized |
+- **Smart Integers**:
+  - `smart`: Signed.
+  - `usmart`: Unsigned.
 
----
-
-## Loop
-
-- If `begin < end`: Region repeats
-- If `begin >= end` or 0: Single playback
+- **Envelope Runtime**:
+  - Interpolates between `Start` and `End`.
+  - `Segment.Peak` (`0-65535`) maps to `0.0-1.0` progress between Start and End values.
