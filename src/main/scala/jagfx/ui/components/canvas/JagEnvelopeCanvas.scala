@@ -30,13 +30,30 @@ class JagEnvelopeCanvas extends JagBaseCanvas:
     viewModel.foreach(vm => drawEnvelope(buffer, w, h, vm))
 
   private def drawGrid(buffer: Array[Int], w: Int, h: Int): Unit =
-    // 8 cols
-    for i <- 1 until 8 do
-      val x = i * w / 8
-      line(buffer, w, h, x, 0, x, h, GridLineFaint)
-    // 4 rows
-    for i <- 1 until 4 do
-      val y = i * h / 4
+    drawVerticalGrid(buffer, w, h)
+    drawHorizontalGrid(buffer, w, h)
+
+  private def drawVerticalGrid(buffer: Array[Int], w: Int, h: Int): Unit =
+    val zoomedWidth = w * zoomLevel
+    val majorCols = 8
+    val majorWidth = zoomedWidth / majorCols
+
+    if zoomLevel > 1 then
+      val minorCols = majorCols * zoomLevel
+      val minorWidth = zoomedWidth / minorCols
+      for i <- 1 until minorCols do
+        if i % zoomLevel != 0 then // skip positions WHERE major lines
+          val x = (i * minorWidth) - panOffset
+          if x >= 0 && x < w then line(buffer, w, h, x, 0, x, h, GridLineMinor)
+
+    for i <- 1 until majorCols do
+      val x = (i * majorWidth) - panOffset
+      if x >= 0 && x < w then line(buffer, w, h, x, 0, x, h, GridLineFaint)
+
+  private def drawHorizontalGrid(buffer: Array[Int], w: Int, h: Int): Unit =
+    val rows = 4
+    for i <- 1 until rows do
+      val y = i * h / rows
       line(buffer, w, h, 0, y, w, y, GridLineFaint)
 
   private def drawEnvelope(
