@@ -12,6 +12,7 @@ import jagfx.synth.SynthesisExecutor
 import javafx.beans.value.ChangeListener
 import jagfx.ui.BindingManager
 import jagfx.ui.controller.inspector.InspectorController
+import jagfx.utils.ColorUtils
 
 class RackController(viewModel: SynthViewModel, inspector: InspectorController)
     extends IController[GridPane]:
@@ -106,6 +107,32 @@ class RackController(viewModel: SynthViewModel, inspector: InspectorController)
   private val poleZeroCanvas = JagPoleZeroCanvas()
   private val freqResponseCanvas = JagFrequencyResponseCanvas()
 
+  private var editorModeCell: Option[Int] = None
+  private val editorCanvas = JagEnvelopeEditorCanvas()
+  private val editorOverlay = new StackPane():
+    getStyleClass.add("editor-overlay")
+    setVisible(false)
+    setPickOnBounds(true)
+
+  private val editorHeader = new HBox():
+    getStyleClass.add("editor-header")
+    setAlignment(javafx.geometry.Pos.CENTER_LEFT)
+    setSpacing(8)
+    setOnMouseClicked(e => if e.getClickCount == 2 then exitEditorMode())
+
+  private val editorTitle = new javafx.scene.control.Label("")
+  editorTitle.getStyleClass.add("editor-title")
+  editorTitle.setOnMouseClicked(e =>
+    if e.getClickCount == 2 then exitEditorMode()
+  )
+  editorHeader.getChildren.add(editorTitle)
+
+  private val editorContent = new VBox():
+    getStyleClass.add("editor-content")
+  editorContent.getChildren.addAll(editorHeader, editorCanvas)
+  VBox.setVgrow(editorCanvas, Priority.ALWAYS)
+  editorOverlay.getChildren.add(editorContent)
+
   definitions.zipWithIndex.foreach { case (defCell, idx) =>
     val cell = JagCellPane(defCell.title)
     if !defCell.enabled then cell.setDisable(true)
@@ -124,7 +151,6 @@ class RackController(viewModel: SynthViewModel, inspector: InspectorController)
           canvas.widthProperty.bind(wrapper.widthProperty)
           canvas.heightProperty.bind(wrapper.heightProperty)
         cell.setAlternateCanvas(canvas)
-
       case CellType.Output =>
         val container = cell.getChildren.get(0).asInstanceOf[VBox]
         val wrapper = container.getChildren.get(1).asInstanceOf[Pane]
@@ -135,7 +161,10 @@ class RackController(viewModel: SynthViewModel, inspector: InspectorController)
           outputWaveformCanvas.heightProperty.bind(wrapper.heightProperty)
         cell.setAlternateCanvas(outputWaveformCanvas)
 
-      case _ => // standard envelope cell
+      case CellType.Envelope(getter, _) =>
+        cell.setOnMaximizeToggle(() => toggleEditorMode(idx))
+
+      case null => // non-envelope, non-filter, non-output
 
     GridPane.setHgrow(cell, Priority.ALWAYS)
     GridPane.setVgrow(cell, Priority.ALWAYS)
@@ -224,6 +253,10 @@ class RackController(viewModel: SynthViewModel, inspector: InspectorController)
 
     view.add(filterCell, 3, 0, 1, 4)
 
+    view.add(editorOverlay, 0, 0, 4, 4)
+    editorCanvas.widthProperty.bind(view.widthProperty.subtract(20))
+    editorCanvas.heightProperty.bind(view.heightProperty.subtract(60))
+
     updateSelection()
 
   private def addCell(defIdx: Int, col: Int, row: Int): Unit =
@@ -242,6 +275,26 @@ class RackController(viewModel: SynthViewModel, inspector: InspectorController)
 
   private def selectCell(idx: Int): Unit =
     viewModel.selectedCellIndex.set(idx)
+
+  private def exitEditorMode(): Unit =
+    editorModeCell = None
+    editorOverlay.setVisible(false)
+
+  private def toggleEditorMode(cellIdx: Int): Unit =
+    editorModeCell match
+      case Some(current) if current == cellIdx => exitEditorMode()
+      case _                                   =>
+        val cellDef = definitions(cellIdx)
+        cellDef.cellType match
+          case CellType.Envelope(getter, _) =>
+            val tone = viewModel.getActiveTone
+            val env = getter(tone)
+            editorCanvas.setViewModel(env)
+            editorTitle.setText(s"${cellDef.title} EDITOR")
+            editorModeCell = Some(cellIdx)
+            editorOverlay.setVisible(true)
+            editorOverlay.toFront()
+          case _ => // ignore
 
   private def bindInspector(idx: Int): Unit =
     val tone = viewModel.getActiveTone
@@ -268,7 +321,7 @@ class RackController(viewModel: SynthViewModel, inspector: InspectorController)
           if cellDef.title.startsWith("G.") then
             cells(idx).getCanvas match
               case c: JagEnvelopeCanvas =>
-                c.setGraphColor(jagfx.utils.ColorUtils.Gating)
+                c.setGraphColor(ColorUtils.Gating)
               case null =>
         case _ => // do nothing
 
