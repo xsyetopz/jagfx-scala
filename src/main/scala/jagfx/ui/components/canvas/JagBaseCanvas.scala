@@ -80,7 +80,7 @@ abstract class JagBaseCanvas extends Canvas:
     math.max(0, (w * zoomLevel) - w)
 
   /** Update pan offset, clamping to valid range. */
-  protected def setPan(offset: Int): Unit =
+  def setPan(offset: Int): Unit =
     val clamped = math.max(0, math.min(maxPanOffset, offset))
     if panOffset != clamped then
       panOffset = clamped
@@ -88,7 +88,7 @@ abstract class JagBaseCanvas extends Canvas:
 
   setOnScroll { (e: ScrollEvent) =>
     if zoomLevel > 1 then
-      val delta = if e.getDeltaY > 0 then 20 else -20
+      val delta = if e.getDeltaY > 0 then -20 else 20
       setPan(panOffset + delta)
       e.consume()
   }
