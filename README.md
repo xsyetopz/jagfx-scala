@@ -45,6 +45,18 @@ sbt "cli input.synth output_looped.wav 4"
 
 ## Building for Distribution
 
+### Universal Fat Jar
+
+Build single `.jar` file that includes all dependencies and works on Windows, Linux, and macOS (x86 & ARM):
+
+```bash
+sbt assembly
+```
+
+Output will be in `target/scala-3.7.4/jagfx-assembly-<version>.jar`.
+
+### Native Launchers
+
 ```bash
 sbt dist
 ```
