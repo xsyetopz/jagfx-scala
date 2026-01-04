@@ -15,11 +15,11 @@ Binary format for synthesized sound effects. Contains up to **`10` instrument vo
 
 | Type | Size | Description |
 |------|------|-------------|
-| `u8` | 1 | Unsigned 8-bit |
-| `u16` | 2 | Unsigned 16-bit BE |
-| `s32` | 4 | Signed 32-bit BE |
-| `smart` | 1-2 | Variable signed: `<128` encodes as `val - 64`; else `((b<<8)+next) - 49152` |
-| `usmart`| 1-2 | Variable unsigned: `<128` encodes as `val`; else `((b-128)<<8) + next` |
+| `u8` | `1` | Unsigned 8-bit |
+| `u16` | `2` | Unsigned 16-bit BE |
+| `s32` | `4` | Signed 32-bit BE |
+| `smart` | `1-2` | Variable signed: `<128` encodes as `val - 64`; else `((b<<8)+next) - 49152` |
+| `usmart`| `1-2` | Variable unsigned: `<128` encodes as `val`; else `((b-128)<<8) + next` |
 
 ---
 
@@ -36,7 +36,7 @@ Binary format for synthesized sound effects. Contains up to **`10` instrument vo
 
 ### Tone Slot Detection
 
-Maximum 10 slots. Each detected via **Header Marker**:
+Maximum `10` slots. Each detected via **Header Marker**:
 
 - `0x00`: **Empty Slot**. (Consumes `1` byte. Parser advances to next slot).
 - `!= 0x00`: **Tone Present**. (Byte NOT consumed during detection).
@@ -66,7 +66,7 @@ Maximum 10 slots. Each detected via **Header Marker**:
 | Start Offset | `u16` | Start delay (ms) |
 | Filter | `Filter` | Optional IIR |
 
-**OptPair**: Peek byte. `0x00`=absent (consume `1`), else read two`Envelope`s.
+**OptPair**: Peek byte. `0x00`=absent (consume `1`), else read two Envelopes.
 
 ---
 
@@ -102,7 +102,7 @@ Maximum 10 slots. Each detected via **Header Marker**:
 
 ## Filter Definition
 
-IIR filter. Max 4 pole pairs per direction.
+IIR filter. Max `4` pole pairs per direction.
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -110,8 +110,8 @@ IIR filter. Max 4 pole pairs per direction.
 | **IF Packed == 0** | | **Filter Empty (Return)** |
 | Unity | `u16[2]` | Gain (Forward `0`, Forward `1`) |
 | Mask | `u8` | Modulation Flags |
-| Coeffs 0 | `(u16,u16)[]` | `Count0` pairs of (Freq, Mag) for Channel `0` |
-| Coeffs 1 | `(u16,u16)[]` | `Count0` pairs of (Freq, Mag) for Channel `1`.<br>If`(Mask & (1<<(Ch*4)<<p))` set, read new values.<br>Else copy `Ch0` values. |
+| Coeffs `0` | `(u16,u16)[]` | `Count0` pairs of (Freq, Mag) for Channel `0` |
+| Coeffs `1` | `(u16,u16)[]` | `Count0` pairs of (Freq, Mag) for Channel `1`.<br>If`(Mask & (1<<(Ch*4)<<p))` set, read new values.<br>Else copy `Ch0` values. |
 | Envelope | `SegEnv` | **Read ONLY if** `Mask != 0 \|\| Unity1 != Unity0`. Else None. |
 
 ---
@@ -162,7 +162,7 @@ graph LR
       end
     end
 
-    FiltDef -.->|Update Coeffs (128 samples)| Filter
+    FiltDef -.->|"Update Coeffs (128 samples)"| Filter
 ```
 
 ---
