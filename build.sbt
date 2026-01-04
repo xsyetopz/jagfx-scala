@@ -5,7 +5,7 @@ Global / onChangedBuildSource := ReloadOnSourceChanges
 Global / excludeLintKeys += Universal / libraryDependencies
 
 ThisBuild / organization := "jagfx"
-ThisBuild / version := "1.0.2"
+ThisBuild / version := "1.0.3"
 ThisBuild / scalaVersion := "3.7.4"
 
 ThisBuild / semanticdbEnabled := true
@@ -37,7 +37,29 @@ lazy val root = project
     Compile / resourceGenerators += Def.task {
       scss.value
       Seq.empty[File]
-    }.taskValue
+    }.taskValue,
+    assembly / assemblyMergeStrategy := {
+      case PathList("META-INF", "services", xs @ _*) =>
+        MergeStrategy.filterDistinctLines
+      case PathList("META-INF", xs @ _*) =>
+        xs map { _.toLowerCase } match {
+          case "manifest.mf" :: Nil | "index.list" :: Nil |
+              "dependencies" :: Nil =>
+            MergeStrategy.discard
+          case "license" :: Nil | "license.txt" :: Nil | "notice" :: Nil |
+              "notice.txt" :: Nil =>
+            MergeStrategy.discard
+          case _ => MergeStrategy.first
+        }
+      case "module-info.class"                   => MergeStrategy.discard
+      case x if x.endsWith("/module-info.class") => MergeStrategy.discard
+      case _                                     => MergeStrategy.first
+    },
+    assembly / libraryDependencies ++= allJavaFxDeps,
+
+    // JPackage settings
+    packageSummary := "JagFX - Jagex Synth Editor",
+    packageDescription := "Cross-platform editor for Jagex Audio Synthesis (.synth) files."
   )
 
 addCommandAlias(
