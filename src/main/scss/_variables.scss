@@ -11,8 +11,8 @@ $bg-input: #050505;
 
 $bg-cell: #202020;
 $bg-cell-sel: #252525;
-$bg-fill: #33bbee; // --accent
-$bg-graph: #ee7733; // --graph
+$bg-fill: #33bbee;
+$bg-graph: #ee7733;
 $color-info: #009e73;
 $color-warn: #cc79a7;
 
@@ -25,3 +25,38 @@ $text-accent: #33bbee;
 
 $border-dim: #333;
 $border-accent: #33bbee;
+
+// Spacing scale
+$space-xs: 1px;
+$space-sm: 2px;
+$space-md: 4px;
+$space-lg: 6px;
+$space-xl: 8px;
+
+// Component heights
+$height-header: 36px;
+$height-control: 18px;
+$height-cell-collapsed: 22px;
+$height-bar: 4px;
+$height-footer: 150px;
+$height-table-scroll: 120px;
+
+// Component widths
+$width-inspector: 170px;
+$width-strip: 50px;
+$width-btn-min: 16px;
+$width-input-min: 24px;
+$width-bar-min: 10px;
+
+// Typography
+$font-size-base: 10px;
+$font-size-sm: 9px;
+$font-stack: "Consolas", "Monaco", "Courier New", monospace;
+
+// Border radii
+$radius-sm: 1px;
+$radius-md: 2px;
+$radius-lg: 4px;
+
+// Opacity
+$opacity-disabled: 0.4;
