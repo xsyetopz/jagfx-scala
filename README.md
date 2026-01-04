@@ -12,7 +12,7 @@ Cross-platform editor for Jagex Audio Synthesis (`.synth`) files. Create, edit, 
 
 ## Features
 
-| Category | Features |
+| Category | Description |
 |----------|----------|
 | **Envelopes** | Pitch, Volume, Vibrato (Rate/Depth), Tremolo (Rate/Depth), Gate (Silence/Duration) |
 | **Harmonics** | 10 additive partials with volume, semitone offset, and phase delay |
