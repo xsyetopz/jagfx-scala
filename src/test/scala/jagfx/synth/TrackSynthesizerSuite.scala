@@ -4,6 +4,7 @@ import jagfx.model._
 import jagfx.io.SynthReader
 import jagfx.TestFixtures._
 import jagfx.Constants
+import jagfx.synth.TrackSynthesizer
 
 class TrackSynthesizerSuite extends munit.FunSuite:
 
