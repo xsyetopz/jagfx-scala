@@ -13,6 +13,9 @@ class BinaryBuffer(val data: Array[Byte]):
   /** Current read/write position. */
   var pos: Int = 0
 
+  /** Flag indicating if read operations have exceeded buffer length (EOF). */
+  var truncated: Boolean = false
+
   /** Creates buffer with specified size. */
   def this(size: Int) = this(new Array[Byte](size))
 
@@ -20,56 +23,71 @@ class BinaryBuffer(val data: Array[Byte]):
   def remaining: Int = data.length - pos
 
   /** Peeks at byte at current position without advancing. */
-  def peek(): Int = data(pos) & 0xff
+  def peek(): Int =
+    if pos >= data.length then 0 else data(pos) & 0xff
 
   /** Reads unsigned 8-bit integer, advances position by `1`. */
   def readU8(): Int =
-    val v = data(pos) & 0xff
-    pos += 1
-    v
+    if checkTruncation(1) then 0
+    else
+      val v = data(pos) & 0xff
+      pos += 1
+      v
 
   /** Reads signed 8-bit integer, advances position by `1`. */
   def readS8(): Int =
-    val v = data(pos)
-    pos += 1
-    v
+    if checkTruncation(1) then 0
+    else
+      val v = data(pos)
+      pos += 1
+      v
 
   /** Reads unsigned 16-bit big-endian integer, advances position by `2`. */
   def readU16BE(): Int =
-    pos += 2
-    ((data(pos - 2) & 0xff) << 8) + (data(pos - 1) & 0xff)
+    if checkTruncation(2) then 0
+    else
+      pos += 2
+      ((data(pos - 2) & 0xff) << 8) + (data(pos - 1) & 0xff)
 
   /** Reads unsigned 16-bit little-endian integer, advances position by `2`. */
   def readU16LE(): Int =
-    pos += 2
-    (data(pos - 2) & 0xff) + ((data(pos - 1) & 0xff) << 8)
+    if checkTruncation(2) then 0
+    else
+      pos += 2
+      (data(pos - 2) & 0xff) + ((data(pos - 1) & 0xff) << 8)
 
   /** Reads signed 16-bit big-endian integer, advances position by `2`. */
   def readS16BE(): Int =
-    import Constants._
-    pos += 2
-    var value = ((data(pos - 2) & 0xff) << 8) + (data(pos - 1) & 0xff)
-    if value > Int16.Max then value -= Int16.Range
-    value
+    if checkTruncation(2) then 0
+    else
+      import Constants._
+      pos += 2
+      var value = ((data(pos - 2) & 0xff) << 8) + (data(pos - 1) & 0xff)
+      if value > Int16.Max then value -= Int16.Range
+      value
 
   /** Reads signed 32-bit big-endian integer, advances position by `4`. */
   def readS32BE(): Int =
-    pos += 4
-    ((data(pos - 4) & 0xff) << 24) +
-      ((data(pos - 3) & 0xff) << 16) +
-      ((data(pos - 2) & 0xff) << 8) +
-      (data(pos - 1) & 0xff)
+    if checkTruncation(4) then 0
+    else
+      pos += 4
+      ((data(pos - 4) & 0xff) << 24) +
+        ((data(pos - 3) & 0xff) << 16) +
+        ((data(pos - 2) & 0xff) << 8) +
+        (data(pos - 1) & 0xff)
 
   /** Reads signed variable-length smart integer (`1` or `2` bytes). */
   def readSmart(): Int =
-    val value = data(pos) & 0xff
+    if remaining == 0 then return 0
+    val value = peek()
     if value < Smart.Threshold then readU8() - Smart.SignedOffset
     else readU16BE() - Smart.SignedBaseOffset
 
   /** Reads unsigned variable-length smart integer (`1` or `2` bytes). */
   def readSmartUnsigned(): Int =
     import Constants._
-    val value = data(pos) & 0xff
+    if remaining == 0 then return 0
+    val value = peek()
     if value < Smart.Threshold then readU8()
     else readU16BE() - Int16.UnsignedMid
 
@@ -121,3 +139,10 @@ class BinaryBuffer(val data: Array[Byte]):
       val v = value + Smart.SignedBaseOffset
       writeU8((v >> 8) & 0xff)
       writeU8(v & 0xff)
+
+  private def checkTruncation(bytes: Int): Boolean =
+    if pos + bytes > data.length then
+      truncated = true
+      pos += bytes
+      true
+    else false
