@@ -22,6 +22,15 @@ object MathUtils:
   inline def clamp(value: Int, min: Int, max: Int): Int =
     math.max(min, math.min(max, value))
 
+  /** Clips array values in-place to 16-bit signed range. */
+  inline def clipInt16(buffer: Array[Int], len: Int = -1): Unit =
+    val end = if len < 0 then buffer.length else len
+    var i = 0
+    while i < end do
+      if buffer(i) < Short.MinValue then buffer(i) = Short.MinValue
+      else if buffer(i) > Short.MaxValue then buffer(i) = Short.MaxValue
+      i += 1
+
   /** Linear interpolation. */
   inline def lerp(a: Double, b: Double, t: Double): Double =
     a + (b - a) * t
