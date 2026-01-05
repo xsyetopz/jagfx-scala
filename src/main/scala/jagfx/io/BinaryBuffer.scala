@@ -32,6 +32,11 @@ class BinaryBuffer(val data: Array[Byte]):
   def peek(): Int =
     if _position >= data.length then 0 else data(_position) & 0xff
 
+  /** Peeks at byte at offset from current position without advancing. */
+  def peekAt(offset: Int): Int =
+    val pos = _position + offset
+    if pos >= data.length then 0 else data(pos) & 0xff
+
   /** Reads unsigned 8-bit integer, advances position by `1`. */
   def readUInt8(): Int =
     if _checkTruncation(1) then 0
