@@ -9,63 +9,62 @@ import jagfx.ui.components.button.JagButton
 import jagfx.utils.IconUtils
 import jagfx.Constants.Int16
 
-private val HeaderWidth = 55
+private val _HeaderWidth = 55
 
 class EnvelopeSegmentEditor extends VBox:
-  private var currentModel: Option[EnvelopeViewModel] = None
-  private var isRefreshing: Boolean = false
+  private var _currentModel: Option[EnvelopeViewModel] = None
+  private var _isRefreshing: Boolean = false
 
-  private val contentBox = VBox(2)
-  private val addButton = JagButton()
+  private val _contentBox = VBox(2)
+  private val _addButton = JagButton()
 
   setSpacing(0) // Table look
   getStyleClass.add("segment-table")
 
-  // Table Header
-  private val headerRow = createHeader()
+  private val _tableHeader = _createHeader()
 
-  private val scrollPane = new ScrollPane()
-  scrollPane.setContent(contentBox)
-  scrollPane.setFitToWidth(true)
-  scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER)
-  scrollPane.getStyleClass.add("segment-table-scroll")
-  VBox.setVgrow(scrollPane, Priority.ALWAYS)
+  private val _scrollPane = new ScrollPane()
+  _scrollPane.setContent(_contentBox)
+  _scrollPane.setFitToWidth(true)
+  _scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER)
+  _scrollPane.getStyleClass.add("segment-table-scroll")
+  VBox.setVgrow(_scrollPane, Priority.ALWAYS)
 
-  addButton.setGraphic(IconUtils.icon("mdi2p-plus", 14))
-  addButton.setMaxWidth(Double.MaxValue)
-  addButton.getStyleClass.add("segment-add-btn")
-  addButton.setTooltip(new Tooltip("Add new envelope segment"))
-  addButton.setOnAction(_ => addSegment())
+  _addButton.setGraphic(IconUtils.icon("mdi2p-plus", 14))
+  _addButton.setMaxWidth(Double.MaxValue)
+  _addButton.getStyleClass.add("segment-add-btn")
+  _addButton.setTooltip(new Tooltip("Add new envelope segment"))
+  _addButton.setOnAction(_ => _addSegment())
 
-  getChildren.addAll(headerRow, scrollPane, addButton)
+  getChildren.addAll(_tableHeader, _scrollPane, _addButton)
 
-  private var currentListener: Option[() => Unit] = None
+  private var _currentListener: Option[() => Unit] = None
 
   def bind(model: EnvelopeViewModel): Unit =
     // clean up prev listener
-    currentModel.foreach(m =>
-      currentListener.foreach(l => m.removeChangeListener(l))
+    _currentModel.foreach(m =>
+      _currentListener.foreach(l => m.removeChangeListener(l))
     )
 
-    currentModel = Some(model)
-    val listener = () => refresh()
-    currentListener = Some(listener)
+    _currentModel = Some(model)
+    val listener = () => _refresh()
+    _currentListener = Some(listener)
     model.addChangeListener(listener)
 
-    refresh()
+    _refresh()
 
-  private def refresh(): Unit =
-    isRefreshing = true
+  private def _refresh(): Unit =
+    _isRefreshing = true
     try
-      currentModel.foreach { model =>
+      _currentModel.foreach { model =>
         val segments = model.getFullSegments
-        val currentRows = contentBox.getChildren
+        val currentRows = _contentBox.getChildren
         if currentRows.size > segments.length then
           currentRows.remove(segments.length, currentRows.size)
         if currentRows.size < segments.length then
           for i <- currentRows.size until segments.length do
             val seg = segments(i)
-            contentBox.getChildren.add(createRow(i, seg.duration, seg.peak))
+            _contentBox.getChildren.add(_createRow(i, seg.duration, seg.peak))
 
         for i <- 0 until segments.length do
           val seg = segments(i)
@@ -79,9 +78,9 @@ class EnvelopeSegmentEditor extends VBox:
           if peakField.getValue != seg.peak then peakField.setValue(seg.peak)
       }
     finally
-      isRefreshing = false
+      _isRefreshing = false
 
-  private def createHeader(): HBox =
+  private def _createHeader(): HBox =
     val box = HBox(0)
     box.getStyleClass.add("segment-table-header")
     box.setAlignment(Pos.CENTER_LEFT)
@@ -93,12 +92,12 @@ class EnvelopeSegmentEditor extends VBox:
     lblIdx.setStyle("-fx-alignment: center;")
 
     val lblDur = new Label("DUR")
-    lblDur.setPrefWidth(HeaderWidth)
+    lblDur.setPrefWidth(_HeaderWidth)
     lblDur.getStyleClass.add("h-head-small")
     lblDur.setAlignment(Pos.CENTER_LEFT)
 
     val lblPeak = new Label("PEAK")
-    lblPeak.setPrefWidth(HeaderWidth)
+    lblPeak.setPrefWidth(_HeaderWidth)
     lblPeak.getStyleClass.add("h-head-small")
     lblPeak.setAlignment(Pos.CENTER_LEFT)
 
@@ -108,7 +107,7 @@ class EnvelopeSegmentEditor extends VBox:
     box.getChildren.addAll(lblIdx, lblDur, lblPeak, lblAct)
     box
 
-  private def createRow(index: Int, duration: Int, peak: Int): HBox =
+  private def _createRow(index: Int, duration: Int, peak: Int): HBox =
     val row = HBox(0)
     row.getStyleClass.add("segment-table-row")
     row.setAlignment(Pos.CENTER_LEFT)
@@ -133,9 +132,9 @@ class EnvelopeSegmentEditor extends VBox:
 
     val peakField = JagNumericField(0, Int16.Range, peak, scale, fmt)
     durField.valueProperty.addListener((_, _, nv) =>
-      if !isRefreshing then
+      if !_isRefreshing then
         val currentPeak = peakField.getValue.intValue
-        update(index, nv.intValue, currentPeak)
+        _update(index, nv.intValue, currentPeak)
     )
 
     peakField.setPrefWidth(55)
@@ -146,9 +145,9 @@ class EnvelopeSegmentEditor extends VBox:
     )
     peakField.setTooltip(peakTip)
     peakField.valueProperty.addListener((_, _, nv) =>
-      if !isRefreshing then
+      if !_isRefreshing then
         val currentDur = durField.getValue.intValue
-        update(index, currentDur, nv.intValue)
+        _update(index, currentDur, nv.intValue)
     )
 
     val delBtn = JagButton()
@@ -156,20 +155,20 @@ class EnvelopeSegmentEditor extends VBox:
     delBtn.getStyleClass.add("icon-btn-small")
     delBtn.setPrefWidth(20)
     delBtn.setTooltip(new Tooltip("Remove this segment"))
-    delBtn.setOnAction(_ => remove(index))
+    delBtn.setOnAction(_ => _remove(index))
 
     row.getChildren.addAll(idxLbl, durField, peakField, delBtn)
     row
 
-  private def addSegment(): Unit =
-    currentModel.foreach(_.addSegment(100, 32768))
+  private def _addSegment(): Unit =
+    _currentModel.foreach(_.addSegment(100, Int16.UnsignedMaxValue))
 
-  private def remove(index: Int): Unit =
-    currentModel.foreach(_.removeSegment(index))
+  private def _remove(index: Int): Unit =
+    _currentModel.foreach(_.removeSegment(index))
 
-  private def update(index: Int, d: Int, p: Int): Unit =
+  private def _update(index: Int, d: Int, p: Int): Unit =
     // avoid redundant updates IF coming FROM listener refresh
-    currentModel.foreach { m =>
+    _currentModel.foreach { m =>
       val segs = m.getFullSegments
       if index < segs.length then
         val curr = segs(index)
