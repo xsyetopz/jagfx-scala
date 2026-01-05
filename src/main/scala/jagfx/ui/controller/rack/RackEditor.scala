@@ -2,7 +2,9 @@ package jagfx.ui.controller.rack
 
 import javafx.scene.layout._
 import javafx.scene.control.Label
+import jagfx.ui.components.button.JagButton
 import jagfx.ui.components.canvas.JagEnvelopeEditorCanvas
+import jagfx.utils.IconUtils
 import jagfx.ui.viewmodel.SynthViewModel
 import jagfx.ui.viewmodel.EnvelopeViewModel
 
@@ -15,12 +17,21 @@ class RackEditor(viewModel: SynthViewModel):
     getStyleClass.add("editor-header")
     setAlignment(javafx.geometry.Pos.CENTER_LEFT)
     setSpacing(8)
-    setOnMouseClicked(e => if e.getClickCount == 2 then exitEditorMode())
+    setOnMouseClicked(e => e.consume())
 
   val title = new Label("")
   title.getStyleClass.add("editor-title")
-  title.setOnMouseClicked(e => if e.getClickCount == 2 then exitEditorMode())
-  header.getChildren.add(title)
+  title.setOnMouseClicked(e => e.consume())
+
+  val spacer = new Region()
+  HBox.setHgrow(spacer, Priority.ALWAYS)
+
+  val minBtn = JagButton()
+  minBtn.setGraphic(IconUtils.icon("mdi2w-window-minimize", 20))
+  minBtn.getStyleClass.add("t-btn")
+  minBtn.setOnAction(_ => exitEditorMode())
+
+  header.getChildren.addAll(title, spacer, minBtn)
 
   val content = new VBox():
     getStyleClass.add("editor-content")
