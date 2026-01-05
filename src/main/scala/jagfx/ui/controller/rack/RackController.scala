@@ -6,12 +6,12 @@ import jagfx.ui.components.canvas._
 import jagfx.ui.components.pane._
 import jagfx.synth.SynthesisExecutor
 import jagfx.ui.BindingManager
-import jagfx.ui.controller.IController
+import jagfx.ui.controller.ControllerLike
 import jagfx.ui.controller.inspector.InspectorController
 import jagfx.utils.ColorUtils
 
 class RackController(viewModel: SynthViewModel, inspector: InspectorController)
-    extends IController[GridPane]:
+    extends ControllerLike[GridPane]:
   protected val view = GridPane()
   view.getStyleClass.add("rack")
   view.setHgap(1)

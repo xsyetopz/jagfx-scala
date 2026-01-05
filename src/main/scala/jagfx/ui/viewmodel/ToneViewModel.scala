@@ -5,7 +5,7 @@ import jagfx.model._
 import jagfx.Constants
 
 /** `ViewModel` for single `Tone`. */
-class ToneViewModel extends IViewModel:
+class ToneViewModel extends ViewModelLike:
   val enabled = new SimpleBooleanProperty(false)
 
   val pitch = new EnvelopeViewModel()

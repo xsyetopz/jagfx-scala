@@ -4,7 +4,7 @@ import javafx.beans.property._
 import jagfx.model._
 
 /** `ViewModel` for `Envelope` data. */
-class EnvelopeViewModel extends IViewModel:
+class EnvelopeViewModel extends ViewModelLike:
   val form = new SimpleObjectProperty[WaveForm](WaveForm.Square)
   val start = new SimpleIntegerProperty(0)
   val end = new SimpleIntegerProperty(0)

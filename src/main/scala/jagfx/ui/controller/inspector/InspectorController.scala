@@ -5,12 +5,12 @@ import javafx.scene.control._
 import javafx.scene.layout._
 import javafx.geometry.Pos
 import jagfx.ui.viewmodel._
-import jagfx.ui.controller.IController
+import jagfx.ui.controller.ControllerLike
 import jagfx.ui.components.button.JagButton
 
 /** Inspector panel for editing envelope or filter parameters. */
 class InspectorController(viewModel: SynthViewModel)
-    extends IController[ScrollPane]:
+    extends ControllerLike[ScrollPane]:
   protected val view = ScrollPane()
   view.getStyleClass.add("inspector-scroll")
   view.setFitToWidth(true)

@@ -3,7 +3,7 @@ package jagfx.ui.viewmodel
 import scala.collection.mutable.ArrayBuffer
 
 /** Base trait for `ViewModel`s with change listener support. */
-trait IViewModel:
+trait ViewModelLike:
   private val _listeners = ArrayBuffer[() => Unit]()
 
   /** Register callback to be notified when this `ViewModel` changes. */

@@ -156,44 +156,32 @@ object ToneSynthesizer:
       state: SynthState,
       sampleCount: Int
   ): Unit =
-    import Constants._
     val phases = new Array[Int](Constants.MaxHarmonics)
     var frequencyPhase = 0
     var amplitudePhase = 0
-    var startFreq = 0
-    var startAmp = 0
 
     for sample <- 0 until sampleCount do
       var frequency = state.freqBaseEval.evaluate(sampleCount)
       var amplitude = state.ampBaseEval.evaluate(sampleCount)
 
-      if sample == sampleCount / 2 then
-        startFreq = frequency
-        startAmp = amplitude
-
-      (state.freqModRateEval, state.freqModRangeEval) match
-        case (Some(rateEval), Some(rangeEval)) =>
-          val rate = rateEval.evaluate(sampleCount)
-          val range = rangeEval.evaluate(sampleCount)
-          frequency += _generateSample(
-            range,
-            frequencyPhase,
-            tone.vibratoRate.get.form
-          ) >> 1
-          frequencyPhase += (rate * state.frequencyStart >> 16) + state.frequencyDuration
-        case _ => ()
-
-      (state.ampModRateEval, state.ampModRangeEval) match
-        case (Some(rateEval), Some(rangeEval)) =>
-          val rate = rateEval.evaluate(sampleCount)
-          val range = rangeEval.evaluate(sampleCount)
-          amplitude = amplitude * ((_generateSample(
-            range,
-            amplitudePhase,
-            tone.tremoloRate.get.form
-          ) >> 1) + Int16.UnsignedMaxValue) >> 15
-          amplitudePhase += (rate * state.amplitudeStart >> 16) + state.amplitudeDuration
-        case _ => ()
+      val (newFreq, newFreqPhase) = _applyVibrato(
+        frequency,
+        frequencyPhase,
+        sampleCount,
+        state,
+        tone
+      )
+      frequency = newFreq
+      frequencyPhase = newFreqPhase
+      val (newAmp, newAmpPhase) = _applyTremolo(
+        amplitude,
+        amplitudePhase,
+        sampleCount,
+        state,
+        tone
+      )
+      amplitude = newAmp
+      amplitudePhase = newAmpPhase
 
       _renderHarmonics(
         buffer,
@@ -205,6 +193,50 @@ object ToneSynthesizer:
         amplitude,
         phases
       )
+
+  private def _applyVibrato(
+      frequency: Int,
+      phase: Int,
+      sampleCount: Int,
+      state: SynthState,
+      tone: Tone
+  ): (Int, Int) =
+    (state.freqModRateEval, state.freqModRangeEval) match
+      case (Some(rateEval), Some(rangeEval)) =>
+        val rate = rateEval.evaluate(sampleCount)
+        val range = rangeEval.evaluate(sampleCount)
+        val mod = _generateSample(
+          range,
+          phase,
+          tone.vibratoRate.get.form
+        ) >> 1
+        val nextPhase =
+          phase + (rate * state.frequencyStart >> 16) + state.frequencyDuration
+        (frequency + mod, nextPhase)
+      case _ => (frequency, phase)
+
+  private def _applyTremolo(
+      amplitude: Int,
+      phase: Int,
+      sampleCount: Int,
+      state: SynthState,
+      tone: Tone
+  ): (Int, Int) =
+    (state.ampModRateEval, state.ampModRangeEval) match
+      case (Some(rateEval), Some(rangeEval)) =>
+        val rate = rateEval.evaluate(sampleCount)
+        val range = rangeEval.evaluate(sampleCount)
+        val mod = _generateSample(
+          range,
+          phase,
+          tone.tremoloRate.get.form
+        ) >> 1
+        val newAmp =
+          amplitude * (mod + Constants.Int16.UnsignedMaxValue) >> 15
+        val nextPhase =
+          phase + (rate * state.amplitudeStart >> 16) + state.amplitudeDuration
+        (newAmp, nextPhase)
+      case _ => (amplitude, phase)
 
   private def _renderHarmonics(
       buffer: Array[Int],

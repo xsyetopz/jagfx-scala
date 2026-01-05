@@ -3,7 +3,7 @@ package jagfx.ui.controller
 import javafx.scene.layout.Region
 
 /** Base trait for UI controllers. */
-trait IController[V <: Region]:
+trait ControllerLike[V <: Region]:
   /** Root view managed by this controller. */
   protected val view: V
 

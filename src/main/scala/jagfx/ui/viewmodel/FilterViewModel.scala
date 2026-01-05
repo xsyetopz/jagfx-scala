@@ -4,7 +4,7 @@ import javafx.beans.property._
 import jagfx.model._
 
 /** `ViewModel` for `Filter` data (poles/zeros). */
-class FilterViewModel extends IViewModel:
+class FilterViewModel extends ViewModelLike:
   // Pair counts (`0-4` each)
   val pairCount0 = new SimpleIntegerProperty(0)
   val pairCount1 = new SimpleIntegerProperty(0)

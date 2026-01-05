@@ -2,12 +2,12 @@ package jagfx.ui.controller.footer
 
 import javafx.scene.layout._
 import jagfx.ui.viewmodel.SynthViewModel
-import jagfx.ui.controller.IController
+import jagfx.ui.controller.ControllerLike
 import jagfx.ui.BindingManager
 import javafx.scene.control.Label
 
 /** Footer controller containing tones, harmonics, reverb, and mode panels. */
-class FooterController(viewModel: SynthViewModel) extends IController[VBox]:
+class FooterController(viewModel: SynthViewModel) extends ControllerLike[VBox]:
   private val _content = HBox()
   _content.getStyleClass.add("footer")
 

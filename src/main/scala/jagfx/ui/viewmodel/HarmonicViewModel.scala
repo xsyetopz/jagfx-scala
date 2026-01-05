@@ -4,7 +4,7 @@ import javafx.beans.property._
 import jagfx.model.Harmonic
 
 /** `ViewModel` for `Harmonic` data. */
-class HarmonicViewModel extends IViewModel:
+class HarmonicViewModel extends ViewModelLike:
   val active = new SimpleBooleanProperty(false)
   val semitone = new SimpleIntegerProperty(0)
   val volume = new SimpleIntegerProperty(0)
