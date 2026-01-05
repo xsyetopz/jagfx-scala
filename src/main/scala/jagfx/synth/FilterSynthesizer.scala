@@ -2,26 +2,24 @@ package jagfx.synth
 
 import jagfx.model._
 import jagfx.Constants
-import jagfx.Constants.Int16
+import jagfx.Constants.{Int16, FilterUpdateRate}
 import jagfx.utils.MathUtils._
 
-private val FilterUpdateRate = 128
+private case class FilterCoefs(count0: Int, count1: Int, inverseA0: Int)
 
 /** IIR filter processor. */
 object FilterSynthesizer:
   /** Applies IIR filter to buffer in-place. */
   def apply(buffer: Array[Int], filter: Filter, sampleCount: Int): Unit =
-    val envelopeEval = filter.envelope.map(EnvelopeEvaluator(_)).orNull
-    if envelopeEval != null then envelopeEval.reset()
+    val envelopeEval = filter.envelope.map(EnvelopeEvaluator(_))
+    envelopeEval.foreach(_.reset())
 
     val state = FilterState(filter)
     val input = buffer.clone()
 
-    var t =
-      if envelopeEval != null then envelopeEval.evaluate(sampleCount)
-      else Int16.Range
+    var t = envelopeEval.map(_.evaluate(sampleCount)).getOrElse(Int16.Range)
     var envelopeFactor = t / Int16.Range.toFloat
-    var (count0, count1, inverseA0) = state.update(envelopeFactor)
+    var FilterCoefs(count0, count1, inverseA0) = state.update(envelopeFactor)
 
     var i = 0
     while i < sampleCount do
@@ -39,17 +37,18 @@ object FilterSynthesizer:
           state
         )
 
-        if envelopeEval != null then
-          t = envelopeEval.evaluate(sampleCount)
+        envelopeEval.foreach { eval =>
+          t = eval.evaluate(sampleCount)
           envelopeFactor = t / Int16.Range.toFloat
+        }
 
         i += 1
 
       if i < sampleCount then
-        val res = state.update(envelopeFactor)
-        count0 = res._1
-        count1 = res._2
-        inverseA0 = res._3
+        val coefs = state.update(envelopeFactor)
+        count0 = coefs.count0
+        count1 = coefs.count1
+        inverseA0 = coefs.inverseA0
 
   private def computeChunkEnd(i: Int, sampleCount: Int, count0: Int): Int =
     val nextChunk = math.min(i + FilterUpdateRate, sampleCount)
@@ -90,12 +89,12 @@ object FilterSynthesizer:
     val feedback: Array[Int] = Array.ofDim[Int](8)
     private val floatCoefs = Array.ofDim[Float](2, 8)
 
-    def update(envelopeFactor: Float): (Int, Int, Int) =
+    def update(envelopeFactor: Float): FilterCoefs =
       val inverseA0 = computeInverseA0(envelopeFactor)
       val floatInvA0 = inverseA0 / Int16.Range.toFloat
       val c0 = computeCoefs(0, envelopeFactor, floatInvA0)
       val c1 = computeCoefs(1, envelopeFactor, 1.0f)
-      (c0, c1, inverseA0)
+      FilterCoefs(c0, c1, inverseA0)
 
     private def computeInverseA0(envelopeFactor: Float): Int =
       val unityGain0 = filter.unity(0)
