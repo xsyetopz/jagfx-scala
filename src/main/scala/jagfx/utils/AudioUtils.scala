@@ -1,11 +1,11 @@
 package jagfx.utils
 
-import jagfx.constants
+import jagfx.Constants
 
 /** Audio time conversion utilities. */
 object AudioUtils:
   import jagfx.types._
-  import constants._
+  import Constants._
 
   /** Converts milliseconds to sample count using current sample rate. */
   def msToSamples(ms: Millis): Samples =

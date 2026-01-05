@@ -1,6 +1,6 @@
 package jagfx.utils
 
-import jagfx.constants.Int16
+import jagfx.Constants.Int16
 
 /** Common mathematical constants and utilities. */
 object MathUtils:
