@@ -14,14 +14,14 @@ class FilterViewModel extends IViewModel:
   val unity1 = new SimpleIntegerProperty(0)
 
   // Phase and magnitude for each pole (2 directions * 4 poles * 2 interpolation points)
-  private val phaseArrays = Array.fill(2, 4, 2)(new SimpleIntegerProperty(0))
-  private val magnitudeArrays =
+  private val _phaseArrays = Array.fill(2, 4, 2)(new SimpleIntegerProperty(0))
+  private val _magnitudeArrays =
     Array.fill(2, 4, 2)(new SimpleIntegerProperty(0))
 
   def pairPhase(dir: Int)(slot: Int)(point: Int): IntegerProperty =
-    phaseArrays(dir)(slot)(point)
+    _phaseArrays(dir)(slot)(point)
   def pairMagnitude(dir: Int)(slot: Int)(point: Int): IntegerProperty =
-    magnitudeArrays(dir)(slot)(point)
+    _magnitudeArrays(dir)(slot)(point)
 
   def isEmpty: Boolean = pairCount0.get == 0 && pairCount1.get == 0
 
@@ -42,8 +42,9 @@ class FilterViewModel extends IViewModel:
                 f.pairPhase(dir).length > point &&
                 f.pairPhase(dir)(point).length > slot
               then
-                phaseArrays(dir)(slot)(point).set(f.pairPhase(dir)(point)(slot))
-                magnitudeArrays(dir)(slot)(point)
+                _phaseArrays(dir)(slot)(point)
+                  .set(f.pairPhase(dir)(point)(slot))
+                _magnitudeArrays(dir)(slot)(point)
                   .set(f.pairMagnitude(dir)(point)(slot))
 
         notifyListeners()
@@ -56,8 +57,8 @@ class FilterViewModel extends IViewModel:
     unity0.set(0)
     unity1.set(0)
     for dir <- 0 until 2; slot <- 0 until 4; point <- 0 until 2 do
-      phaseArrays(dir)(slot)(point).set(0)
-      magnitudeArrays(dir)(slot)(point).set(0)
+      _phaseArrays(dir)(slot)(point).set(0)
+      _magnitudeArrays(dir)(slot)(point).set(0)
     notifyListeners()
 
   def toModel(): Option[Filter] =
@@ -67,15 +68,22 @@ class FilterViewModel extends IViewModel:
       val pairMagnitude = Array.ofDim[Int](2, 2, 4)
 
       for dir <- 0 until 2; slot <- 0 until 4; point <- 0 until 2 do
-        pairPhase(dir)(point)(slot) = phaseArrays(dir)(slot)(point).get
-        pairMagnitude(dir)(point)(slot) = magnitudeArrays(dir)(slot)(point).get
+        pairPhase(dir)(point)(slot) = _phaseArrays(dir)(slot)(point).get
+        pairMagnitude(dir)(point)(slot) = _magnitudeArrays(dir)(slot)(point).get
+
+      val phaseIArray = IArray.tabulate(2)(d =>
+        IArray.tabulate(2)(p => IArray.tabulate(4)(i => pairPhase(d)(p)(i)))
+      )
+      val magIArray = IArray.tabulate(2)(d =>
+        IArray.tabulate(2)(p => IArray.tabulate(4)(i => pairMagnitude(d)(p)(i)))
+      )
 
       Some(
         Filter(
-          Array(pairCount0.get, pairCount1.get),
-          Array(unity0.get, unity1.get),
-          pairPhase,
-          pairMagnitude,
+          IArray(pairCount0.get, pairCount1.get),
+          IArray(unity0.get, unity1.get),
+          phaseIArray,
+          magIArray,
           None // envelope handled separately
         )
       )
