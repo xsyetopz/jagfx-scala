@@ -59,9 +59,9 @@ Maximum `10` slots. Each detected via **Header Marker**:
 | Vibrato | `OptPair` | Rate + Depth |
 | Tremolo | `OptPair` | Rate + Depth |
 | Gate | `OptPair` | Silence + Duration |
-| Harmonics | `Harmonic[]` | Max `10`, null-terminated |
-| Reverb Delay | `usmart` | |
-| Reverb Volume | `usmart` | |
+| Partials | `Partial[]` | Max `10`, null-terminated |
+| Echo Delay | `usmart` | |
+| Echo Mix | `usmart` | |
 | Duration | `u16` | Total duration (ms) |
 | Start Offset | `u16` | Start delay (ms) |
 | Filter | `Filter` | Optional IIR |
@@ -116,7 +116,7 @@ IIR filter. Max `4` pole pairs per direction.
 
 ---
 
-## Harmonics
+## Partials
 
 Read until `Volume (usmart) == 0` or Max `10` reached.
 
@@ -151,10 +151,10 @@ graph LR
       Osc --> Gating
       Gating --> Filter[IIR Filter]
 
-      Filter --> Mix[Mix Harmonics]
-      Mix --> Reverb
+      Filter --> Mix[Mix Partials]
+      Mix --> Echo
 
-      Reverb --> Out[Sample Output]
+      Echo --> Out[Sample Output]
 
       subgraph RateControl [Modulation]
          Vib[Vibrato] -.-> Pitch
