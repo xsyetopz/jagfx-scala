@@ -2,11 +2,7 @@ package jagfx.synth
 
 import jagfx.utils.MathUtils
 import java.util.SplittableRandom
-import jagfx.Constants.Int16
-
-private val SemitoneRange = 120
-private val SinTableDivisor = 5215.1903
-private val CircleSegments = 64
+import jagfx.Constants.{Int16, SemitoneRange, SinTableDivisor, CircleSegments}
 
 /** Precomputed lookup tables for DSP and rendering operations. */
 object LookupTables:
@@ -15,11 +11,13 @@ object LookupTables:
   /** Noise table with deterministic random `-1`/`+1` values. */
   lazy val noise: Array[Int] =
     val rng = new SplittableRandom(0xdeadbeef)
-    Array.tabulate(Int16.UnsignedMid)(_ => if rng.nextBoolean() then 1 else -1)
+    Array.tabulate(Int16.UnsignedMaxValue)(_ =>
+      if rng.nextBoolean() then 1 else -1
+    )
 
   /** Sine table with `16384`-amplitude range. */
   lazy val sin: Array[Int] =
-    Array.tabulate(Int16.UnsignedMid)(i =>
+    Array.tabulate(Int16.UnsignedMaxValue)(i =>
       (math.sin(i / SinTableDivisor) * Int16.Quarter).toInt
     )
 
