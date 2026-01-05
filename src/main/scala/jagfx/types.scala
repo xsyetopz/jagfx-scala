@@ -1,11 +1,10 @@
 package jagfx
 
-import jagfx.constants.SampleRate
+import jagfx.Constants.SampleRate
 
-/** Opaque types for type-safe value handling with zero runtime overhead.
-  */
+/** Opaque types for type-safe value handling with zero runtime overhead. */
 object types:
-  // variable-length ints
+  // Variable-length integers
   opaque type Smart = Int
   opaque type USmart = Int
 
@@ -37,7 +36,7 @@ object types:
       inline def value: Int = s
       inline def toMillis: Millis = Millis((s * 1000) / SampleRate)
 
-  // Percentage (0-100)
+  // Percentage (`0-100`)
   opaque type Percent = Int
 
   object Percent:
