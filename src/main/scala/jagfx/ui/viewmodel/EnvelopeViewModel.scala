@@ -30,6 +30,18 @@ class EnvelopeViewModel extends ViewModelLike:
       _segments = _segments.updated(index, EnvelopeSegment(duration, peak))
       notifyListeners()
 
+  def updateSegments(updates: Seq[(Int, EnvelopeSegment)]): Unit =
+    var changed = false
+    var newSegments = _segments
+    updates.foreach { case (index, newSeg) =>
+      if index >= 0 && index < newSegments.length then
+        newSegments = newSegments.updated(index, newSeg)
+        changed = true
+    }
+    if changed then
+      _segments = newSegments
+      notifyListeners()
+
   def isEmpty: Boolean = _segments.isEmpty && waveform.get == Waveform.Off
   def isZero: Boolean =
     start.get == 0 && end.get == 0 && _segments.forall(_.peak == 0)
