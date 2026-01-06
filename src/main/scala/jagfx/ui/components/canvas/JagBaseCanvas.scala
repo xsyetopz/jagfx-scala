@@ -6,9 +6,10 @@ import jagfx.Constants.MinFrameNanos
 import jagfx.utils.ColorUtils.*
 import jagfx.utils.DrawingUtils.*
 import javafx.animation.AnimationTimer
-import javafx.scene.canvas.Canvas
+import javafx.scene.canvas.*
 import javafx.scene.image.*
 import javafx.scene.input.*
+import jagfx.utils.MathUtils
 
 /** Base canvas with throttled rendering and buffer management. */
 abstract class JagBaseCanvas extends Canvas:
@@ -52,21 +53,12 @@ abstract class JagBaseCanvas extends Canvas:
   /** Requests redraw on next animation frame. */
   def requestRedraw(): Unit = dirty = true
 
-  private def performDraw(): Unit =
-    val width = getWidth.toInt
-    val height = getHeight.toInt
-    if width <= 0 || height <= 0 then return
-    if buffer.length != width * height then resizeBuffer(width, height)
-    if buffer.isEmpty then return
-
-    clear(buffer, BgBlack)
-    drawContent(buffer, width, height)
-
-    val pw = image.getPixelWriter
-    pw.setPixels(0, 0, width, height, pixelFormat, buffer, 0, width)
-
-    val gc = getGraphicsContext2D
-    gc.drawImage(image, 0, 0)
+  /** Update pan offset, clamping to valid range. */
+  def setPan(offset: Int): Unit =
+    val clamped = MathUtils.clamp(offset, 0, maxPanOffset)
+    if panOffset != clamped then
+      panOffset = clamped
+      requestRedraw()
 
   protected def resizeBuffer(width: Int, height: Int): Unit =
     if width > 0 && height > 0 then
@@ -75,6 +67,9 @@ abstract class JagBaseCanvas extends Canvas:
 
   /** Draw specific content for this canvas type. */
   protected def drawContent(buffer: Array[Int], width: Int, height: Int): Unit
+
+  /** Draw additional JavaFX overlay (text, shapes) on top of buffer. */
+  protected def drawOverlay(gc: GraphicsContext): Unit = {}
 
   /** Draw center line (zero crossing / midpoint). */
   protected def drawCenterLine(
@@ -89,13 +84,6 @@ abstract class JagBaseCanvas extends Canvas:
   protected def maxPanOffset: Int =
     val width = getWidth.toInt
     math.max(0, (width * zoomLevel) - width)
-
-  /** Update pan offset, clamping to valid range. */
-  def setPan(offset: Int): Unit =
-    val clamped = math.max(0, math.min(maxPanOffset, offset))
-    if panOffset != clamped then
-      panOffset = clamped
-      requestRedraw()
 
   setOnScroll { (e: ScrollEvent) =>
     if zoomLevel > 1 then
@@ -115,6 +103,22 @@ abstract class JagBaseCanvas extends Canvas:
       val delta = (dragStartX - e.getX).toInt
       setPan(dragStartPan + delta)
   }
+
+  private def performDraw(): Unit =
+    val width = getWidth.toInt
+    val height = getHeight.toInt
+    if width <= 0 || height <= 0 then return
+    if buffer.length != width * height then resizeBuffer(width, height)
+    if buffer.isEmpty then return
+
+    clear(buffer, BgBlack)
+    drawContent(buffer, width, height)
+
+    val pw = image.getPixelWriter
+    pw.setPixels(0, 0, width, height, pixelFormat, buffer, 0, width)
+
+    val gc = getGraphicsContext2D
+    gc.drawImage(image, 0, 0)
 
   private def scheduleResize(): Unit =
     if !resizePending then
