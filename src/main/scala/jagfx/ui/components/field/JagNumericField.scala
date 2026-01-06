@@ -99,6 +99,12 @@ class JagNumericField(
       setText(str)
   )
 
+  /** Forces text display to sync with current value. */
+  def refresh(): Unit =
+    val displayVal = value.get / scale
+    val str = String.format(format, displayVal.asInstanceOf[Object])
+    setText(str)
+
 object JagNumericField:
   /** Creates numeric field with default scale. */
   def apply(min: Int, max: Int, initial: Int): JagNumericField =

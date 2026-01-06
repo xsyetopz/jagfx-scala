@@ -10,6 +10,7 @@ import javafx.beans.value.ChangeListener
 import javafx.geometry.Pos
 import javafx.scene.control.*
 import javafx.scene.layout.*
+import javafx.geometry.Insets
 
 // Constants
 private final val HalfMaxPartials = Constants.MaxPartials - 5
@@ -36,7 +37,7 @@ object PartialsPanel:
     val headRow = StackPane()
     headRow.setAlignment(Pos.CENTER)
 
-    val head = Label("PARTIALS")
+    val head = Label("ADDITIVE PARTIALS")
     head.getStyleClass.add("panel-head")
     head.setMaxWidth(Double.MaxValue)
     head.setAlignment(Pos.CENTER)
@@ -44,7 +45,7 @@ object PartialsPanel:
     val bankBtn = JagButton("1-5")
     bankBtn.setPrefWidth(40)
     StackPane.setAlignment(bankBtn, Pos.CENTER_RIGHT)
-    StackPane.setMargin(bankBtn, new javafx.geometry.Insets(0, 4, 0, 0))
+    StackPane.setMargin(bankBtn, new Insets(0, 4, 0, 0))
 
     headRow.getChildren.addAll(head, bankBtn)
 
@@ -105,7 +106,7 @@ object PartialsPanel:
     val label = Label(s"PARTIAL ${index + 1}")
     label.getStyleClass.add("height-head")
 
-    val sRow = PartialsRow("SEMI:", -480, 480, 10.0, "%.1f")
+    val sRow = PartialsRow("PIT:", -480, 480, 10.0, "%.1f")
     val vRow = PartialsRow("VOL:", 0, 100)
     val dRow = PartialsRow("DEL:", 0, 1000)
 
@@ -164,6 +165,7 @@ class PartialsRow(
   def bind(prop: IntegerProperty): Unit =
     currentProp.foreach(input.valueProperty.unbindBidirectional)
     input.valueProperty.bindBidirectional(prop)
+    input.refresh()
     currentProp = Some(prop)
 
     barFill.prefWidthProperty.bind(
