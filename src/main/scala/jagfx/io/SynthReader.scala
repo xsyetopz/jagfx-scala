@@ -4,12 +4,18 @@ import java.nio.file.*
 
 import scala.collection.mutable.ListBuffer
 
-import jagfx.Constants
 import jagfx.Constants.MaxPartials
 import jagfx.Constants.MaxVoices
 import jagfx.model.*
 import jagfx.types.*
 import jagfx.utils.ArrayUtils
+
+// Constants
+private final val MinWaveformId = 1
+private final val MaxWaveformId = 4
+private final val EnvelopeStartThreshold = 10_000_000
+private final val SegCountOffset = 9
+private final val MaxReasonableSegCount = 15
 
 /** Parser for `.synth` binary format to `SynthFile` domain model. */
 object SynthReader:
@@ -183,10 +189,28 @@ object SynthReader:
       if peeked == 0 then
         buf.skip(1)
         return false
-      if peeked >= 1 && peeked <= 4 && buf.remaining >= Constants.MaxVoices then
-        val possibleSegCount = buf.peekAt(9)
-        if possibleSegCount <= 15 then return false
+      if isAmbiguousFilterByte(peeked) && looksLikeEnvelope() then return false
       true
+
+    /** Packed byte `1-4` could be confused with waveform ID. */
+    private def isAmbiguousFilterByte(b: Int): Boolean =
+      b >= MinWaveformId && b <= MaxWaveformId && buf.remaining >= MaxVoices
+
+    /** Heuristic: Check if bytes look more like envelope than filter.
+      *
+      * @see
+      *   `lavacast_rev377.synth`
+      */
+    private def looksLikeEnvelope(): Boolean =
+      // check s32 @ offset 1-4 (would be envelope start value)
+      val (b1, b2, b3, b4) =
+        (buf.peekAt(1), buf.peekAt(2), buf.peekAt(3), buf.peekAt(4))
+      val possibleStart = (b1 << 24) | (b2 << 16) | (b3 << 8) | b4
+      // envelope start values typically small, filter unity values not
+      if possibleStart < -EnvelopeStartThreshold || possibleStart > EnvelopeStartThreshold
+      then return false // definitely filter
+      val possibleSegCount = buf.peekAt(SegCountOffset)
+      possibleSegCount <= MaxReasonableSegCount
 
     private def readFilterHeader(): (Int, Int) =
       val packedPairs = buf.readUInt8()
