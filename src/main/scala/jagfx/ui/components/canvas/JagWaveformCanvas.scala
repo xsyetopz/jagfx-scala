@@ -29,12 +29,12 @@ class JagWaveformCanvas extends JagBaseCanvas:
   /** Sets playhead position (`0.0` = start, `1.0` = end, `-1.0` = hidden). */
   def setPlayheadPosition(position: Double): Unit =
     playheadPosition = position
-    javafx.application.Platform.runLater(() => requestRedraw())
+    requestRedraw()
 
   /** Hides playhead. */
   def hidePlayhead(): Unit =
     playheadPosition = -1.0
-    javafx.application.Platform.runLater(() => requestRedraw())
+    requestRedraw()
 
   override protected def drawContent(
       buffer: Array[Int],
