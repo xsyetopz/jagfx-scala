@@ -5,7 +5,7 @@ import java.util.Arrays
 /** Drawing utilities for raw ARGB pixel buffers. */
 object DrawingUtils:
   /** Draws line into raw ARGB pixel buffer using Bresenham's algorithm. */
-  def line(
+  inline def line(
       buffer: Array[Int],
       width: Int,
       height: Int,
@@ -38,7 +38,7 @@ object DrawingUtils:
       buffer(y * width + x) = color
 
   /** Fills rectangle into raw ARGB pixel buffer. */
-  def fillRect(
+  inline def fillRect(
       buffer: Array[Int],
       width: Int,
       height: Int,
@@ -58,7 +58,7 @@ object DrawingUtils:
         for x <- updateMinX until updateMaxX do buffer(rowOffset + x) = color
 
   /** Clears buffer with specified color. */
-  def clear(buffer: Array[Int], color: Int): Unit =
+  inline def clear(buffer: Array[Int], color: Int): Unit =
     Arrays.fill(buffer, color)
 
   /** Sets pixel at specified coordinates. */
