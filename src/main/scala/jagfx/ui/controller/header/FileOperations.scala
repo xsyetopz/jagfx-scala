@@ -8,8 +8,8 @@ import jagfx.synth.TrackSynthesizer
 import jagfx.ui.viewmodel.SynthViewModel
 import jagfx.utils.UserPrefs
 import javafx.scene.control.*
-import javafx.stage.*
 import javafx.scene.layout.*
+import javafx.stage.*
 
 /** File I/O operations for `.synth` files and WAV export. */
 class FileOperations(viewModel: SynthViewModel, getWindow: () => Window):
